@@ -1,0 +1,36 @@
+{
+  "name": "chessiq-monorepo",
+  "version": "3.3.0",
+  "private": true,
+  "description": "ChessIQ v3.3.0 — Production-Frozen, 6NF Longitudinal Chess Analytics & Distributed Stockfish Engine Platform",
+  "author": "ChessIQ Systems Architecture Team",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "migrate": "node server/src/db/migrate.js",
+    "test": "npm run test --workspace=server --if-present && npm run test --workspace=client --if-present",
+    "lint": "npm run lint --workspace=server --if-present && npm run lint --workspace=client --if-present",
+    "format": "prettier --write \"**/*.{js,jsx,json,md,sql}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,json,md,sql}\"",
+    "build": "npm run build --workspace=client",
+    "verify:day1": "bash scripts/verify-day1.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.5"
+  },
+  "allowScripts": {
+    "bcrypt@5.1.1": true,
+    "esbuild@0.21.5": true
+  }
+}

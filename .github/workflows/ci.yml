@@ -1,0 +1,81 @@
+name: ChessIQ CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-baseline:
+    name: Verify Monorepo Baseline & 6NF Architecture
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: chessiq_admin
+          POSTGRES_PASSWORD: chessiq_dev_password
+          POSTGRES_DB: chessiq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chessiq_admin -d chessiq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      PORT: 5000
+      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgres://chessiq_admin:chessiq_dev_password@localhost:5432/chessiq
+      JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      COOKIE_SECRET: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      STOCKFISH_PATH: /usr/games/stockfish
+      STOCKFISH_THREADS: 1
+      STOCKFISH_HASH_MB: 64
+      STOCKFISH_DEPTH: 14
+      STOCKFISH_SEARCH_TIMEOUT_MS: 8000
+      STOCKFISH_KILL_GRACE_MS: 1500
+      MAX_CONCURRENT_JOBS: 1
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install System Dependencies (Stockfish Engine)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends stockfish postgresql-client
+          which stockfish
+          stockfish --help || true
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Run Schema Migrations (@DB)
+        run: npm run migrate
+
+      - name: Validate 6NF Database Baseline Function (@DB)
+        run: |
+          PGPASSWORD=chessiq_dev_password psql -h localhost -U chessiq_admin -d chessiq -c "SELECT fn_verify_6nf_baseline();"
+
+      - name: Verify Backend Integrity & Health Check (@BE)
+        run: |
+          npm run test:ci --workspace=server
+
+      - name: Build Frontend Application (@FE)
+        run: |
+          npm run build --workspace=client

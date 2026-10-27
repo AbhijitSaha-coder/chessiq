@@ -1,0 +1,36 @@
+{
+  "name": "chessiq-server",
+  "version": "3.3.0",
+  "private": true,
+  "description": "ChessIQ Backend API Gateway, Telemetry Engine & Worker Queue",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon --watch src src/index.js",
+    "migrate": "node src/db/migrate.js",
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:ci": "jest --detectOpenHandles --forceExit --coverage"
+  },
+  "dependencies": {
+    "bcrypt": "5.1.1",
+    "chess.js": "1.0.0-beta.6",
+    "cookie-parser": "1.4.6",
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.19.2",
+    "express-rate-limit": "7.2.0",
+    "helmet": "7.1.0",
+    "jsonwebtoken": "9.0.2",
+    "pg": "8.11.5",
+    "pino": "9.0.0",
+    "pino-http": "10.0.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0",
+    "pino-pretty": "^11.0.0",
+    "supertest": "^6.3.4"
+  }
+}
