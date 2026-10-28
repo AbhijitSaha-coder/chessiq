@@ -13,7 +13,7 @@ export class ApiError extends Error {
    */
   constructor(code, message, status, details = {}) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.details = details;
@@ -30,17 +30,21 @@ const DEFAULT_TIMEOUT_MS = 15000;
  * @returns {Promise<any>}
  */
 export async function apiClient(endpoint, options = {}) {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, headers = {}, ...fetchOptions } = options;
+  const {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    headers = {},
+    ...fetchOptions
+  } = options;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const config = {
-    method: 'GET',
-    credentials: 'include', // Enforce first-party cookie transmission
+    method: "GET",
+    credentials: "include", // Enforce first-party cookie transmission
     headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
+      Accept: "application/json",
+      "Content-Type": "application/json",
       ...headers,
     },
     signal: controller.signal,
@@ -53,8 +57,8 @@ export async function apiClient(endpoint, options = {}) {
 
     // Parse response body safely
     let data;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
       data = await response.json();
     } else {
       data = { message: await response.text() };
@@ -62,11 +66,11 @@ export async function apiClient(endpoint, options = {}) {
 
     if (!response.ok) {
       // 401 Unauthorized Session Expiration Dispatch
-      if (response.status === 401 && typeof window !== 'undefined') {
+      if (response.status === 401 && typeof window !== "undefined") {
         window.dispatchEvent(
-          new CustomEvent('chessiq:session_expired', {
-            detail: { status: 401, error: data?.error || 'UNAUTHORIZED' },
-          })
+          new CustomEvent("chessiq:session_expired", {
+            detail: { status: 401, error: data?.error || "UNAUTHORIZED" },
+          }),
         );
       }
 
@@ -74,7 +78,7 @@ export async function apiClient(endpoint, options = {}) {
         data?.error || `HTTP_${response.status}`,
         data?.message || `Request failed with status ${response.status}`,
         response.status,
-        data
+        data,
       );
     }
 
@@ -82,34 +86,44 @@ export async function apiClient(endpoint, options = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
 
-    if (error.name === 'AbortError') {
-      throw new ApiError('REQUEST_TIMEOUT', `Request timed out after ${timeoutMs}ms`, 408);
+    if (error.name === "AbortError") {
+      throw new ApiError(
+        "REQUEST_TIMEOUT",
+        `Request timed out after ${timeoutMs}ms`,
+        408,
+      );
     }
 
     if (error instanceof ApiError) {
       throw error;
     }
 
-    throw new ApiError('NETWORK_ERROR', error.message || 'Network connection failed', 0);
+    throw new ApiError(
+      "NETWORK_ERROR",
+      error.message || "Network connection failed",
+      0,
+    );
   }
 }
 
 // REST Verb Conveniences
 export const api = {
-  get: (endpoint, options) => apiClient(endpoint, { method: 'GET', ...options }),
+  get: (endpoint, options) =>
+    apiClient(endpoint, { method: "GET", ...options }),
   post: (endpoint, body, options) =>
     apiClient(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(body),
       ...options,
     }),
   put: (endpoint, body, options) =>
     apiClient(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(body),
       ...options,
     }),
-  del: (endpoint, options) => apiClient(endpoint, { method: 'DELETE', ...options }),
+  del: (endpoint, options) =>
+    apiClient(endpoint, { method: "DELETE", ...options }),
 };
 
 export default api;

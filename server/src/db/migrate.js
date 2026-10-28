@@ -4,13 +4,13 @@
  * tracks execution time, and verifies the 6NF baseline diagnostic function.
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const { pool, closePool } = require('./pool');
-const logger = require('../utils/logger');
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+const { pool, closePool } = require("./pool");
+const logger = require("../utils/logger");
 
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../../db/migrations');
+const MIGRATIONS_DIR = path.resolve(__dirname, "../../../db/migrations");
 
 /**
  * Calculates SHA-256 hex digest for file content
@@ -18,7 +18,7 @@ const MIGRATIONS_DIR = path.resolve(__dirname, '../../../db/migrations');
  * @returns {string}
  */
 function computeChecksum(content) {
-  return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+  return crypto.createHash("sha256").update(content, "utf8").digest("hex");
 }
 
 /**
@@ -26,7 +26,10 @@ function computeChecksum(content) {
  */
 async function runMigrations() {
   const startTime = Date.now();
-  logger.info({ dir: MIGRATIONS_DIR }, 'Starting ChessIQ database migration run...');
+  logger.info(
+    { dir: MIGRATIONS_DIR },
+    "Starting ChessIQ database migration run...",
+  );
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
     throw new Error(`Migrations directory does not exist: ${MIGRATIONS_DIR}`);
@@ -34,11 +37,11 @@ async function runMigrations() {
 
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
+    .filter((f) => f.endsWith(".sql"))
     .sort();
 
   if (files.length === 0) {
-    logger.warn('No SQL migration files discovered.');
+    logger.warn("No SQL migration files discovered.");
     return;
   }
 
@@ -54,17 +57,20 @@ async function runMigrations() {
 
   // Fetch already applied migrations
   const { rows: appliedRows } = await pool.query(
-    'SELECT version, checksum, applied_at, execution_ms FROM schema_migrations ORDER BY version ASC;'
+    "SELECT version, checksum, applied_at, execution_ms FROM schema_migrations ORDER BY version ASC;",
   );
   const appliedMap = new Map(appliedRows.map((r) => [r.version, r]));
 
-  logger.info({ total_files: files.length, applied_count: appliedMap.size }, 'Scanning migrations');
+  logger.info(
+    { total_files: files.length, applied_count: appliedMap.size },
+    "Scanning migrations",
+  );
 
   let newlyApplied = 0;
 
   for (const file of files) {
     const filePath = path.join(MIGRATIONS_DIR, file);
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, "utf8");
     const checksum = computeChecksum(content);
     const existing = appliedMap.get(file);
 
@@ -76,39 +82,51 @@ async function runMigrations() {
             expected_checksum: existing.checksum,
             actual_checksum: checksum,
           },
-          'FATAL: Migration file checksum mismatch! Migration has been tampered with or modified.'
+          "FATAL: Migration file checksum mismatch! Migration has been tampered with or modified.",
         );
-        throw new Error(`Tampered migration detected: ${file}. Existing checksum ${existing.checksum} !== ${checksum}`);
+        throw new Error(
+          `Tampered migration detected: ${file}. Existing checksum ${existing.checksum} !== ${checksum}`,
+        );
       }
-      logger.debug({ migration: file }, 'Migration already applied and verified with checksum match');
+      logger.debug(
+        { migration: file },
+        "Migration already applied and verified with checksum match",
+      );
       continue;
     }
 
     // Apply new migration in an isolated transaction
-    logger.info({ migration: file }, 'Applying migration...');
+    logger.info({ migration: file }, "Applying migration...");
     const client = await pool.connect();
     const migrationStart = Date.now();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
       await client.query(content);
 
       const executionMs = Date.now() - migrationStart;
       await client.query(
         `INSERT INTO schema_migrations (version, checksum, applied_at, execution_ms)
          VALUES ($1, $2, CURRENT_TIMESTAMP, $3);`,
-        [file, checksum, executionMs]
+        [file, checksum, executionMs],
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
       newlyApplied++;
       logger.info(
-        { migration: file, execution_ms: executionMs, checksum: checksum.slice(0, 12) + '...' },
-        'Migration applied successfully'
+        {
+          migration: file,
+          execution_ms: executionMs,
+          checksum: checksum.slice(0, 12) + "...",
+        },
+        "Migration applied successfully",
       );
     } catch (err) {
-      await client.query('ROLLBACK');
-      logger.error({ migration: file, error: err.message }, 'Migration transaction rolled back due to error');
+      await client.query("ROLLBACK");
+      logger.error(
+        { migration: file, error: err.message },
+        "Migration transaction rolled back due to error",
+      );
       throw err;
     } finally {
       client.release();
@@ -117,17 +135,46 @@ async function runMigrations() {
 
   // Execute 6NF baseline verification function if available
   try {
-    const { rows: verifyRows } = await pool.query('SELECT fn_verify_6nf_baseline() AS diagnostic;');
+    const { rows: verifyRows } = await pool.query(
+      "SELECT fn_verify_6nf_baseline() AS diagnostic;",
+    );
     const diagnostic = verifyRows[0]?.diagnostic;
-    logger.info({ diagnostic }, 'PostgreSQL 6NF baseline diagnostic verified successfully');
+    logger.info(
+      { diagnostic },
+      "PostgreSQL 6NF baseline diagnostic verified successfully",
+    );
   } catch (err) {
-    logger.warn({ error: err.message }, 'Note: fn_verify_6nf_baseline() could not be evaluated yet');
+    logger.warn(
+      { error: err.message },
+      "Note: fn_verify_6nf_baseline() could not be evaluated yet",
+    );
+  }
+
+  // Execute 6NF schema & 3NF views verification function if available (Day 2+)
+  try {
+    const { rows: schemaRows } = await pool.query(
+      "SELECT fn_verify_6nf_schema() AS diagnostic;",
+    );
+    const schemaDiagnostic = schemaRows[0]?.diagnostic;
+    logger.info(
+      { schemaDiagnostic },
+      "PostgreSQL 6NF Master Schema & 3NF Reconstruction Views verified",
+    );
+  } catch (err) {
+    logger.debug(
+      { error: err.message },
+      "Note: fn_verify_6nf_schema() not yet available or not applied",
+    );
   }
 
   const totalTime = Date.now() - startTime;
   logger.info(
-    { newly_applied: newlyApplied, total_applied: appliedMap.size + newlyApplied, total_duration_ms: totalTime },
-    'Database migrations completed successfully'
+    {
+      newly_applied: newlyApplied,
+      total_applied: appliedMap.size + newlyApplied,
+      total_duration_ms: totalTime,
+    },
+    "Database migrations completed successfully",
   );
 }
 
@@ -138,7 +185,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch(async (err) => {
-      console.error('Migration failed:', err);
+      console.error("Migration failed:", err);
       try {
         await closePool();
       } catch (_) {}

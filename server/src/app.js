@@ -4,26 +4,26 @@
  * live telemetry health route, and centralized AppError exception handling.
  */
 
-const crypto = require('crypto');
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
-const pinoHttp = require('pino-http');
+const crypto = require("crypto");
+const express = require("express");
+const helmet = require("helmet");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
+const pinoHttp = require("pino-http");
 
-const env = require('./config/env');
-const logger = require('./utils/logger');
-const AppError = require('./utils/AppError');
-const { pool, query } = require('./db/pool');
+const env = require("./config/env");
+const logger = require("./utils/logger");
+const AppError = require("./utils/AppError");
+const { pool, query } = require("./db/pool");
 
 const app = express();
 
 // 1. Correlation ID & Request Context Middleware
 app.use((req, res, next) => {
-  const requestId = req.headers['x-request-id'] || crypto.randomUUID();
+  const requestId = req.headers["x-request-id"] || crypto.randomUUID();
   req.id = requestId;
-  res.setHeader('X-Request-Id', requestId);
+  res.setHeader("X-Request-Id", requestId);
   next();
 });
 
@@ -33,9 +33,9 @@ app.use(
     logger,
     genReqId: (req) => req.id,
     customLogLevel: (req, res, err) => {
-      if (res.statusCode >= 500 || err) return 'error';
-      if (res.statusCode >= 400) return 'warn';
-      return 'info';
+      if (res.statusCode >= 500 || err) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "info";
     },
     serializers: {
       req: (req) => ({
@@ -47,7 +47,7 @@ app.use(
         statusCode: res.statusCode,
       }),
     },
-  })
+  }),
 );
 
 // 3. Security Headers via Helmet
@@ -55,7 +55,7 @@ app.use(
   helmet({
     contentSecurityPolicy: false, // Managed by Frontend Reverse Proxy / Edge
     crossOriginEmbedderPolicy: false,
-  })
+  }),
 );
 
 // 4. Strict CORS Policy
@@ -63,18 +63,18 @@ app.use(
   cors({
     origin: env.FRONTEND_URL,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Accept'],
-    exposedHeaders: ['X-Request-Id'],
-  })
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id", "Accept"],
+    exposedHeaders: ["X-Request-Id"],
+  }),
 );
 
 // 5. Signed Cookie Parser
 app.use(cookieParser(env.COOKIE_SECRET));
 
 // 6. Body Parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // 7. General API Rate Limiting
 const apiLimiter = rateLimit({
@@ -83,14 +83,14 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: 'TOO_MANY_REQUESTS',
-    message: 'Too many requests from this client. Please slow down.',
+    error: "TOO_MANY_REQUESTS",
+    message: "Too many requests from this client. Please slow down.",
   },
 });
-app.use('/api', apiLimiter);
+app.use("/api", apiLimiter);
 
 // 8. Health & System Telemetry Endpoint
-app.get('/api/health', async (req, res, next) => {
+app.get("/api/health", async (req, res, next) => {
   const start = Date.now();
   try {
     // Check database connectivity and engine version
@@ -106,23 +106,31 @@ app.get('/api/health', async (req, res, next) => {
       SELECT extname FROM pg_extension WHERE extname IN ('uuid-ossp', 'btree_gist');
     `);
     const installedExts = extRes.rows.map((r) => r.extname);
-    const hasUuidOssp = installedExts.includes('uuid-ossp');
-    const hasBtreeGist = installedExts.includes('btree_gist');
+    const hasUuidOssp = installedExts.includes("uuid-ossp");
+    const hasBtreeGist = installedExts.includes("btree_gist");
+
+    let schemaDiag = null;
+    try {
+      const diagRes = await query("SELECT fn_verify_6nf_schema() AS diag;");
+      schemaDiag = diagRes.rows[0]?.diag;
+    } catch (_) {
+      // Schema may not be migrated yet in early stages
+    }
 
     const isHealthy = hasUuidOssp && hasBtreeGist;
     const statusCode = isHealthy ? 200 : 503;
 
-    const isProduction = env.NODE_ENV === 'production';
+    const isProduction = env.NODE_ENV === "production";
 
     const healthPayload = {
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      version: '3.3.0',
+      status: isHealthy ? "healthy" : "unhealthy",
+      version: "3.3.0",
       timestamp: new Date().toISOString(),
       uptime_seconds: Math.floor(process.uptime()),
       latency_ms: Date.now() - start,
       environment: env.NODE_ENV,
       database: {
-        status: 'connected',
+        status: "connected",
         engine_version: dbRes.rows[0]?.engine_version,
         database_name: dbRes.rows[0]?.db_name,
         version_num: dbRes.rows[0]?.version_num,
@@ -130,6 +138,7 @@ app.get('/api/health', async (req, res, next) => {
           uuid_ossp: hasUuidOssp,
           btree_gist: hasBtreeGist,
         },
+        schema_6nf: schemaDiag,
         pool: {
           total: pool.totalCount,
           idle: pool.idleCount,
@@ -137,8 +146,10 @@ app.get('/api/health', async (req, res, next) => {
         },
       },
       cookie_topology: {
-        mode: isProduction ? 'single_domain_first_party' : 'local_dev_partitioned',
-        same_site: isProduction ? 'Lax' : 'None',
+        mode: isProduction
+          ? "single_domain_first_party"
+          : "local_dev_partitioned",
+        same_site: isProduction ? "Lax" : "None",
         secure: true,
         http_only: true,
       },
@@ -146,12 +157,12 @@ app.get('/api/health', async (req, res, next) => {
 
     return res.status(statusCode).json(healthPayload);
   } catch (err) {
-    logger.error({ err }, 'Health check database diagnostic failed');
+    logger.error({ err }, "Health check database diagnostic failed");
     return res.status(503).json({
-      status: 'unhealthy',
-      version: '3.3.0',
+      status: "unhealthy",
+      version: "3.3.0",
       timestamp: new Date().toISOString(),
-      error: 'DATABASE_DISCONNECTED',
+      error: "DATABASE_DISCONNECTED",
       message: err.message,
     });
   }
@@ -179,7 +190,7 @@ app.use((err, req, res, next) => {
         message: err.message,
         details: err.details,
       },
-      'Operational error handled'
+      "Operational error handled",
     );
     return res.status(err.statusCode).json(err.toJSON());
   }
@@ -192,13 +203,15 @@ app.use((err, req, res, next) => {
       message: err.message,
       stack: err.stack,
     },
-    'Uncaught internal server exception'
+    "Uncaught internal server exception",
   );
 
-  const isProduction = env.NODE_ENV === 'production';
+  const isProduction = env.NODE_ENV === "production";
   return res.status(500).json({
-    error: 'INTERNAL_SERVER_ERROR',
-    message: isProduction ? 'An unexpected internal server error occurred.' : err.message,
+    error: "INTERNAL_SERVER_ERROR",
+    message: isProduction
+      ? "An unexpected internal server error occurred."
+      : err.message,
     ...(isProduction ? {} : { stack: err.stack }),
   });
 });

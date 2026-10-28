@@ -1,4 +1,5 @@
 # ChessIQ v3.3.0 — Final Production Architecture & Formal Engineering Specification
+
 **A Production-Frozen, 6NF Longitudinal Chess Analytics & High-Performance Distributed Engine Platform**
 
 ---
@@ -17,8 +18,9 @@
 ChessIQ is an enterprise-grade, privacy-first chess intelligence engine designed to eliminate the diagnostic fragmentation inherent in modern web chess platforms. Rather than delivering ephemeral, single-game evaluations, ChessIQ aggregates historical games into a longitudinal progression telemetry system. It tracks player-specific weakness trends, phase-based centipawn loss deterioration, tactical oversights, opening repertoire efficacy, and personalized puzzle generation.
 
 Version 3.3.0 constitutes the **definitive, sealed production specification** of the platform. It resolves all architectural, concurrency, schema normalization, and engine evaluation challenges identified across prior iterations:
+
 1. **Physical 6NF Relational Core:** Complete decomposition into irreducible binary relations (at most one non-key attribute per table) with temporal validities enforced via `tstzrange` and GiST exclusion constraints (`btree_gist`).
-2. **High-Performance 6NF Batch Ingestion Procedure:** Eliminates the $N 	imes 18$ multi-statement insert bottleneck by providing `sp_ingest_game_analysis_6nf(...)`, an atomic PL/pgSQL stored procedure accepting parallel primitive arrays and performing bulk set-based ingestion with `array_agg(uuid_generate_v4())` and `UNNEST`.
+2. **High-Performance 6NF Batch Ingestion Procedure:** Eliminates the $N imes 18$ multi-statement insert bottleneck by providing `sp_ingest_game_analysis_6nf(...)`, an atomic PL/pgSQL stored procedure accepting parallel primitive arrays and performing bulk set-based ingestion with `array_agg(uuid_generate_v4())` and `UNNEST`.
 3. **Seamless 3NF Reconstruction Views:** Complete logical view layer (`v_users`, `v_chess_openings`, `v_games`, `v_game_analysis_jobs`, `v_game_analyses`, `v_move_analyses`, `v_training_puzzles`, `v_training_recommendations`) providing 100% backward-compatible 3NF semantics to Express and frontend consumers while strictly preserving normal forms (e.g., dynamic color derivation, foreign-key resolution through games).
 4. **Deterministic FIFO Queue with Isolated Row Locking:** Queue claim query isolates row locking (`FOR UPDATE OF j, js SKIP LOCKED`) exclusively to inner-joined tables and orders strictly by `jca.created_at ASC`, preventing planner failure on outer joins and avoiding random UUID scheduling.
 5. **Driver-Accurate Circuit Breaker (`rowCount`):** Heartbeat updates target a single table (`job_heartbeat_at`) guarded by `EXISTS` subqueries, evaluating lease validity strictly via `result.rowCount === 0` (the official `node-postgres` driver property), triggering an uncatchable `SIGKILL` on the Stockfish process to guarantee fencing.
@@ -29,6 +31,7 @@ Version 3.3.0 constitutes the **definitive, sealed production specification** of
 ---
 
 ## Table of Contents
+
 1. [Project Overview & Problem Statement](#1-project-overview--problem-statement)
 2. [Goals, Non-Goals, and Target Audience](#2-goals-non-goals-and-target-audience)
 3. [Functional and Non-Functional Requirements](#3-functional-and-non-functional-requirements)
@@ -67,18 +70,21 @@ Version 3.3.0 constitutes the **definitive, sealed production specification** of
 
 ---
 
-
 ## 1. Project Overview & Problem Statement
 
 ### 1.1 Context & Problem Statement
+
 Digital chess platforms (Chess.com, Lichess) process hundreds of millions of games each month. While these platforms provide basic post-game computer evaluation, their analytical models suffer from fundamental architectural and analytical limitations:
+
 1. **Ephemeral, Session-Isolated Evaluations:** Analysis is ephemeral and isolated to the single game just concluded. Players receive tactical feedback on move 24 of a specific game, but cannot systematically determine whether that blunder reflects a recurring tactical blind spot across their last 100 Sicilian Defense games.
 2. **Synthetic, Flawed CPL Heuristics:** Commercial engines frequently apply synthetic overrides (such as arbitrarily declaring moves 1–5 to have Centipawn Loss = 0), hiding catastrophic early-ply blunders (e.g., 2. f3?? e5 3. g4?? Qh4#) from empirical player metrics.
 3. **Monolithic, Unnormalized Data Structures:** Existing analytics schemas store games and analysis trees as massive, denormalized JSON blobs or wide relational records. This creates significant update serialization contention, extreme storage sparsity (NULL columns for non-applicable metrics), and impossible point-in-time temporal tracking.
 4. **Third-Party Cookie Authentication Failure:** Modern cross-domain topologies (e.g., SPA on Vercel communicating with an API on Render across disparate domains) fail under strict browser privacy policies (Apple WebKit ITP, Chrome Privacy Sandbox), dropping credentials and breaking worker session tracking.
 
 ### 1.2 The ChessIQ Solution
+
 ChessIQ resolves these structural defects through a purpose-built, high-throughput analytics pipeline:
+
 - **Sixth Normal Form (6NF) Core:** Decomposes every entity into irreducible, atomic binary relations with independent temporal validities, enabling zero-NULL storage, atomic column updates, and unconstrained longitudinal indexing.
 - **Atomic Set-Based Ingestion Procedure:** Delivers `sp_ingest_game_analysis_6nf`, an atomic PL/pgSQL stored procedure accepting parallel primitive arrays and executing bulk set-based ingestion with `array_agg(uuid_generate_v4())` and `UNNEST`, eliminating the multi-statement round-trip penalty.
 - **Deterministic FIFO Queue with Isolated Locking:** Enforces non-blocking, fair job scheduling via CTE-isolated `FOR UPDATE OF j, js SKIP LOCKED` ordered strictly by `jca.created_at ASC`.
@@ -90,6 +96,7 @@ ChessIQ resolves these structural defects through a purpose-built, high-throughp
 ## 2. Goals, Non-Goals, and Target Audience
 
 ### 2.1 Project Goals
+
 - **G-01: Irreducible 6NF Storage Architecture:** Deliver a fully normalized 6NF database model where every mutable attribute lives in an independent binary relation with `tstzrange` temporal intervals and GiST non-overlap constraints.
 - **G-02: Zero-Overhead 3NF Compatibility:** Provide a high-performance 3NF view reconstruction layer (`v_users`, `v_games`, `v_game_analysis_jobs`, `v_move_analyses`, etc.) ensuring standard relational access for API consumers with zero architectural mismatch.
 - **G-03: Sub-Second Concurrency & Non-Blocking Queue:** Enable a PostgreSQL-backed job queue supporting concurrent workers using `FOR UPDATE SKIP LOCKED` with reactive `LISTEN`/`NOTIFY` and exponential full-jitter backoff.
@@ -97,11 +104,13 @@ ChessIQ resolves these structural defects through a purpose-built, high-throughp
 - **G-05: Longitudinal Diagnostic Intelligence:** Aggregate move evaluations into persistent tactical classifications (Blunder, Mistake, Inaccuracy, Best), phase distributions, and personalized puzzle generation.
 
 ### 2.2 Non-Goals (Out of Scope for v3.3.0)
+
 - **NG-01:** Real-time live gameplay, WebRTC pairing, or matchmaking clock engines (focus is dedicated entirely to post-game diagnostic telemetry).
 - **NG-02:** In-browser client-side WebAssembly Stockfish evaluation (all engine computation runs on dedicated server-side workers to preserve thermal/battery budgets and guarantee evaluation determinism).
 - **NG-03:** Multi-engine consensus voting (Stockfish 16.1 NNUE serves as the authoritative evaluation engine).
 
 ### 2.3 Target Audience
+
 1. **Competitive Club and Tournament Players (1000–2500 FIDE / Chess.com / Lichess):** Players requiring empirical, longitudinal tracking of their opening repertoires and time-decaying phase weaknesses.
 2. **Chess Coaches and Academy Mentors:** Instructors needing deep programmatic access to student blunder distributions without manual PGN annotation.
 3. **Database & Distributed Systems Engineers:** Technical reviewers evaluating real-world 6NF database decomposition, high-throughput batch stored procedures, and PostgreSQL queue concurrency.
@@ -111,6 +120,7 @@ ChessIQ resolves these structural defects through a purpose-built, high-throughp
 ## 3. Functional and Non-Functional Requirements
 
 ### 3.1 Functional Requirements (FR)
+
 - **FR-01 (Flexible Parameterized Ingestion):** The system must accept PGN uploads via `POST /api/games/upload` supporting an optional parameterization payload (`user_color` = 'WHITE' | 'BLACK' or `account_handle`). When supplied, this explicitly resolves player identity even when PGN header names diverge from the system username.
 - **FR-02 (Canonical Move Sequence Deduplication):** The system must calculate a canonical SHA-256 hash over the normalized move sequence (`game_move_signatures`). Deduplication must prevent duplicate game ingestion per user (`user_game_move_signatures(user_id, move_signature)`), while allowing distinct games that reach transposed board states.
 - **FR-03 (Deterministic FIFO Queue Claim):** The queue worker must claim jobs via CTE-isolated `FOR UPDATE OF j, js SKIP LOCKED` ordered strictly by `jca.created_at ASC`, ensuring oldest pending jobs are serviced first.
@@ -121,6 +131,7 @@ ChessIQ resolves these structural defects through a purpose-built, high-throughp
 - **FR-08 (Single-Domain Session Authentication):** Authentication must issue first-party `SameSite=Lax; Secure=true; HttpOnly=true` cookies over `app.chessiq.com` and `app.chessiq.com/api` via reverse proxy rewrites.
 
 ### 3.2 Non-Functional Requirements (NFR)
+
 - **NFR-01 (Throughput & Processing Latency):** Analysis worker processing time must not exceed 250ms per move at depth 13–14 on shared vCPU environments, yielding an end-to-end processing time under 20 seconds for an average 80-ply game.
 - **NFR-02 (Database Write Efficiency):** Ingestion of an 80-ply game into 6NF relations via `sp_ingest_game_analysis_6nf` must complete in under 50ms, eliminating the 1,440-statement round-trip latency.
 - **NFR-03 (Strict Relational Normalization):** The physical schema must satisfy Sixth Normal Form (6NF) with zero non-key transitive dependencies and zero join dependencies.
@@ -131,27 +142,28 @@ ChessIQ resolves these structural defects through a purpose-built, high-throughp
 
 ## 4. Final Technology Stack and Architecture
 
-| Architectural Layer | Technology Selected | Version / Specification | Rationale & Architectural Purpose |
-| :--- | :--- | :--- | :--- |
-| **Relational Database** | PostgreSQL | 16.x / 17.x (Neon Serverless) | Native `tstzrange` GiST exclusions (`btree_gist`), `SKIP LOCKED` concurrency, PL/pgSQL procedures, and JSONB aggregations. |
-| **Backend Runtime** | Node.js LTS | 20.x | High-throughput asynchronous event loop, native child process IPC management, and mature streaming libraries. |
-| **API Framework** | Express.js | 4.19.x | Minimalist, unopinionated HTTP routing layer with native middleware chaining for auth, CORS, and CSRF enforcement. |
-| **Database Driver** | `pg` (node-postgres) | 8.11.x | Enterprise connection pooling, native parameterized queries, asynchronous event listeners (`notification`), and `rowCount` tracking. |
-| **Chess Rules Engine** | `chess.js` | 1.0.0-beta.6 | Fast, spec-compliant PGN parsing, SAN/UCI translation, FEN state generation, legal move validation, and checkmate detection. |
-| **Analysis Engine** | Stockfish NNUE | 16.1 / 17 (x86-64 / ARM64) | World-champion open-source chess evaluation engine communicating via standardized UCI protocol over child process pipes. |
-| **Frontend Framework** | React | 18.2.x (Vercel) | Declarative component UI, concurrent rendering mode, optimized virtual DOM reconciliation for rapid move-list navigation. |
-| **Chessboard UI** | `react-chessboard` | 4.3.x | High-performance SVG/HTML5 draggable board component supporting premoves, legal move indicators, and flip orientations. |
-| **Reverse Proxy / Gateway** | Cloudflare / Vercel Rewrites | Gateway Edge | Single-domain reverse proxy routing (`app.chessiq.com` and `app.chessiq.com/api`), enforcing first-party cookie isolation. |
+| Architectural Layer         | Technology Selected          | Version / Specification       | Rationale & Architectural Purpose                                                                                                    |
+| :-------------------------- | :--------------------------- | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| **Relational Database**     | PostgreSQL                   | 16.x / 17.x (Neon Serverless) | Native `tstzrange` GiST exclusions (`btree_gist`), `SKIP LOCKED` concurrency, PL/pgSQL procedures, and JSONB aggregations.           |
+| **Backend Runtime**         | Node.js LTS                  | 20.x                          | High-throughput asynchronous event loop, native child process IPC management, and mature streaming libraries.                        |
+| **API Framework**           | Express.js                   | 4.19.x                        | Minimalist, unopinionated HTTP routing layer with native middleware chaining for auth, CORS, and CSRF enforcement.                   |
+| **Database Driver**         | `pg` (node-postgres)         | 8.11.x                        | Enterprise connection pooling, native parameterized queries, asynchronous event listeners (`notification`), and `rowCount` tracking. |
+| **Chess Rules Engine**      | `chess.js`                   | 1.0.0-beta.6                  | Fast, spec-compliant PGN parsing, SAN/UCI translation, FEN state generation, legal move validation, and checkmate detection.         |
+| **Analysis Engine**         | Stockfish NNUE               | 16.1 / 17 (x86-64 / ARM64)    | World-champion open-source chess evaluation engine communicating via standardized UCI protocol over child process pipes.             |
+| **Frontend Framework**      | React                        | 18.2.x (Vercel)               | Declarative component UI, concurrent rendering mode, optimized virtual DOM reconciliation for rapid move-list navigation.            |
+| **Chessboard UI**           | `react-chessboard`           | 4.3.x                         | High-performance SVG/HTML5 draggable board component supporting premoves, legal move indicators, and flip orientations.              |
+| **Reverse Proxy / Gateway** | Cloudflare / Vercel Rewrites | Gateway Edge                  | Single-domain reverse proxy routing (`app.chessiq.com` and `app.chessiq.com/api`), enforcing first-party cookie isolation.           |
 
 ---
-
 
 ## 5. Sixth Normal Form (6NF) Database Architecture
 
 ### 5.1 6NF Theoretical Grounding & Normalization Proof
 
 #### Relational Normalization Progression
+
 In classical relational theory (Codd, Fagin, Date), normalization progresses by eliminating anomalies:
+
 - **First Normal Form (1NF):** Relation values are strictly atomic; no repeating groups, arrays, or delimited strings (e.g., puzzle themes decomposed into associative tables).
 - **Second Normal Form (2NF):** Satisfies 1NF and contains no partial key dependencies (every non-key attribute is fully functionally dependent on the entire candidate key).
 - **Third Normal Form (3NF):** Satisfies 2NF and contains no transitive dependencies ($X \to Y \to Z$, where $Y$ is not a superkey). For example, resolving `user_id` in analysis jobs strictly through `game_users` rather than storing it directly in `game_analysis_jobs`.
@@ -166,6 +178,7 @@ In practical relational engineering:
 $$\textbf{Every 6NF table consists of a Primary Key (or entity identifier + temporal domain) and AT MOST ONE non-key attribute.}$$
 
 #### Why 6NF is Optimal for High-Performance Game Telemetry:
+
 1. **Zero-NULL Relational Invariant:** Optional attributes (e.g., `eval_mate`, `best_move_uci`, `claim_token`, `last_error`) do not consume row-storage overhead or require `NULL` values. If an attribute does not apply to a move, no row is inserted into that attribute table.
 2. **Column-Level Lock Isolation:** Concurrent worker updates (e.g., a background heartbeat pinging `heartbeat_at`, while an analysis thread updates `current_ply`) target completely distinct physical tables (`job_heartbeat_at` vs. `job_current_plies`), completely eliminating row-level lock contention on PostgreSQL.
 3. **Point-in-Time Temporal Granularity:** Attributes that mutate over time (e.g., `user_ratings`, `job_statuses`) maintain temporal validity intervals (`valid_during tstzrange`) enforced by GiST non-overlap constraints, allowing instantaneous point-in-time reconstruction without separate audit log tables.
@@ -1230,16 +1243,15 @@ JOIN recommendation_creation_times rct ON r.id = rct.recommendation_id;
 
 ### 5.5 6NF Engineering Trade-Off Analysis
 
-| Architectural Dimension | 3NF / BCNF Baseline | 6NF Decomposed Architecture | Production Impact & Mitigations in v3.3.0 |
-| :--- | :--- | :--- | :--- |
-| **Storage Sparsity & Nullability** | High NULL ratio across optional columns (`eval_mate`, `best_move_uci`, `claim_token`). | Zero-NULL relational invariant. Unset attributes consume zero storage bytes. | Eliminates NULL-pointer edge cases; reduces storage footprint on sparse columns by 38%. |
-| **Lock Concurrency** | Wide row locks. Heartbeat ping locks the entire job row, serializing progress tracking. | Column-level lock isolation. Heartbeat touches only `job_heartbeat_at`. | Fully decouples worker heartbeats, progress tracking, and status sweeps. |
-| **Write Amplification** | Single wide row insert per ply ($80$ statements per game). | Multi-table inserts ($80 \times 18 = 1,440$ statements if naive). | **Solved via `sp_ingest_game_analysis_6nf`**: single atomic RPC unrolls arrays in memory within PostgreSQL. |
-| **Read Complexity & Joins** | Flat `SELECT` across wide tables. Simple query plans. | Multi-way joins across 15+ binary tables to reconstruct wide records. | **Solved via 3NF View Layer**: Views pre-package joins; analytical queries target only the exact 1–2 columns needed. |
-| **Temporal Auditing** | Requires separate audit log tables or JSON shadow tables (`jobs_audit`). | Native temporal validities on mutable states (`tstzrange` + GiST exclusions). | Enforces physical non-overlap of active leases and ratings at the database engine level. |
+| Architectural Dimension            | 3NF / BCNF Baseline                                                                     | 6NF Decomposed Architecture                                                   | Production Impact & Mitigations in v3.3.0                                                                            |
+| :--------------------------------- | :-------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| **Storage Sparsity & Nullability** | High NULL ratio across optional columns (`eval_mate`, `best_move_uci`, `claim_token`).  | Zero-NULL relational invariant. Unset attributes consume zero storage bytes.  | Eliminates NULL-pointer edge cases; reduces storage footprint on sparse columns by 38%.                              |
+| **Lock Concurrency**               | Wide row locks. Heartbeat ping locks the entire job row, serializing progress tracking. | Column-level lock isolation. Heartbeat touches only `job_heartbeat_at`.       | Fully decouples worker heartbeats, progress tracking, and status sweeps.                                             |
+| **Write Amplification**            | Single wide row insert per ply ($80$ statements per game).                              | Multi-table inserts ($80 \times 18 = 1,440$ statements if naive).             | **Solved via `sp_ingest_game_analysis_6nf`**: single atomic RPC unrolls arrays in memory within PostgreSQL.          |
+| **Read Complexity & Joins**        | Flat `SELECT` across wide tables. Simple query plans.                                   | Multi-way joins across 15+ binary tables to reconstruct wide records.         | **Solved via 3NF View Layer**: Views pre-package joins; analytical queries target only the exact 1–2 columns needed. |
+| **Temporal Auditing**              | Requires separate audit log tables or JSON shadow tables (`jobs_audit`).                | Native temporal validities on mutable states (`tstzrange` + GiST exclusions). | Enforces physical non-overlap of active leases and ratings at the database engine level.                             |
 
 ---
-
 
 ## 6. Comprehensive Relational Diagrams (ERD)
 
@@ -1477,6 +1489,7 @@ graph TD
 ### 7.2 DFD Level 1: Subsystem & Process Decomposition
 
 The Level 1 Diagram decomposes the system into four discrete sub-processes operating over shared data stores D1 through D6:
+
 - **Process 1.0 (Ingestion & Gatekeeper):** Validates PGN syntax, parameterizes player color, checks deduplication via move signatures, and enqueues analysis jobs.
 - **Process 2.0 (Worker Queue & Engine Execution):** Claims jobs via FIFO CTE locks, launches isolated Stockfish child processes, and monitors lease heartbeats.
 - **Process 3.0 (Batch 6NF Persistence):** Collects ply evaluations, checks opening catalogs, and executes atomic stored procedure `sp_ingest_game_analysis_6nf`.
@@ -1568,50 +1581,51 @@ graph TD
 
 ### 7.4 Formal Data Dictionary
 
-| Data Flow Identifier | Name | Source | Destination | Data Structure / Schema Definition |
-| :--- | :--- | :--- | :--- | :--- |
-| **DF-01** | `PGN_Upload_Payload` | User / Client | Process 1.0 | `multipart/form-data` or JSON: `{ pgn: string, user_color?: 'WHITE' \| 'BLACK', account_handle?: string }` |
-| **DF-02** | `Move_Signature_Hash` | Process 1.0 | Data Store D2 | Canonical SHA-256 string (64-char hex) derived from normalized move list: `SHA-256(SAN_1 + " " + SAN_2 + ...)` |
-| **DF-03** | `Job_Claim_Record` | Data Store D3 | Process 2.0 | CTE result: `{ job_id: UUID, game_id: UUID, attempt_count: number, max_retries: number, created_at: TIMESTAMPTZ }` |
-| **DF-04** | `Heartbeat_Update_Ping`| Process 2.0 | Data Store D3 | SQL: `UPDATE job_heartbeat_at SET heartbeat_at = NOW() WHERE job_id = $1 AND EXISTS (token) AND EXISTS (processing)` |
-| **DF-05** | `Breaker_Trip_Signal` | Process 2.0 | Stockfish OS Process | OS Kernel Signal: `SIGKILL` (Signal 9, uncatchable termination) upon `result.rowCount === 0` |
-| **DF-06** | `UCI_Evaluation_Stream`| Stockfish Process| Process 2.0 | Text stream: `info depth 14 seldepth 18 score cp 32 nodes 48123 time 120 pv e2e4 e7e5 g1f3` |
-| **DF-07** | `Batch_Analysis_Arrays`| Process 2.0 | Process 3.0 / Procedure | RPC arguments: 11 scalar metrics + 18 parallel arrays (`INT[]`, `VARCHAR[]`, `NUMERIC[]`, `JSONB[]`, `BOOLEAN[]`) |
-| **DF-08** | `Reconstruction_View_Query`| Process 4.0 / API| Data Store D4 | Multi-way join across binary 6NF relations returning logical 3NF shapes (`v_games`, `v_move_analyses`) |
-| **DF-09** | `Tactical_Recommendation`| Process 4.0 | User / Client | JSON: `{ category: string, description: string, puzzle: { fen: string, moves: string, rating: number }, evidence: object }` |
+| Data Flow Identifier | Name                        | Source            | Destination             | Data Structure / Schema Definition                                                                                          |
+| :------------------- | :-------------------------- | :---------------- | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| **DF-01**            | `PGN_Upload_Payload`        | User / Client     | Process 1.0             | `multipart/form-data` or JSON: `{ pgn: string, user_color?: 'WHITE' \| 'BLACK', account_handle?: string }`                  |
+| **DF-02**            | `Move_Signature_Hash`       | Process 1.0       | Data Store D2           | Canonical SHA-256 string (64-char hex) derived from normalized move list: `SHA-256(SAN_1 + " " + SAN_2 + ...)`              |
+| **DF-03**            | `Job_Claim_Record`          | Data Store D3     | Process 2.0             | CTE result: `{ job_id: UUID, game_id: UUID, attempt_count: number, max_retries: number, created_at: TIMESTAMPTZ }`          |
+| **DF-04**            | `Heartbeat_Update_Ping`     | Process 2.0       | Data Store D3           | SQL: `UPDATE job_heartbeat_at SET heartbeat_at = NOW() WHERE job_id = $1 AND EXISTS (token) AND EXISTS (processing)`        |
+| **DF-05**            | `Breaker_Trip_Signal`       | Process 2.0       | Stockfish OS Process    | OS Kernel Signal: `SIGKILL` (Signal 9, uncatchable termination) upon `result.rowCount === 0`                                |
+| **DF-06**            | `UCI_Evaluation_Stream`     | Stockfish Process | Process 2.0             | Text stream: `info depth 14 seldepth 18 score cp 32 nodes 48123 time 120 pv e2e4 e7e5 g1f3`                                 |
+| **DF-07**            | `Batch_Analysis_Arrays`     | Process 2.0       | Process 3.0 / Procedure | RPC arguments: 11 scalar metrics + 18 parallel arrays (`INT[]`, `VARCHAR[]`, `NUMERIC[]`, `JSONB[]`, `BOOLEAN[]`)           |
+| **DF-08**            | `Reconstruction_View_Query` | Process 4.0 / API | Data Store D4           | Multi-way join across binary 6NF relations returning logical 3NF shapes (`v_games`, `v_move_analyses`)                      |
+| **DF-09**            | `Tactical_Recommendation`   | Process 4.0       | User / Client           | JSON: `{ category: string, description: string, puzzle: { fen: string, moves: string, rating: number }, evidence: object }` |
 
 ---
-
 
 ## 8. API Specification & Parameterized Ingestion
 
 ### 8.1 API Endpoints Overview
 
-| Method | Endpoint | Authentication | Purpose & Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register new user account; issues HTTP-only session cookie. |
-| `POST` | `/api/auth/login` | Public | Authenticate username/password; issues HTTP-only session cookie. |
-| `POST` | `/api/auth/logout` | Authenticated | Invalidate session; clears cookie. |
-| `GET` | `/api/auth/me` | Authenticated | Retrieve current user profile and rating. |
-| `POST` | `/api/games/upload` | Authenticated | Upload and parameterize PGN; deduplicates; enqueues 6NF analysis job. |
-| `GET` | `/api/games` | Authenticated | List paginated games for current user via `v_games` view. |
-| `GET` | `/api/games/:id` | Authenticated | Retrieve single game metadata and move analysis tree via `v_move_analyses`. |
-| `GET` | `/api/jobs/:id` | Authenticated | Poll analysis job progress (`current_ply`, `total_plies`, `status`). |
-| `GET` | `/api/analytics/repertoire` | Authenticated | Win rates and ACPL grouped by ECO code opening repertoire. |
-| `GET` | `/api/analytics/phases` | Authenticated | Centipawn loss and blunder frequencies partitioned by game phase. |
-| `GET` | `/api/recommendations` | Authenticated | Retrieve personalized puzzle recommendations matching blunder themes. |
+| Method | Endpoint                    | Authentication | Purpose & Description                                                       |
+| :----- | :-------------------------- | :------------- | :-------------------------------------------------------------------------- |
+| `POST` | `/api/auth/register`        | Public         | Register new user account; issues HTTP-only session cookie.                 |
+| `POST` | `/api/auth/login`           | Public         | Authenticate username/password; issues HTTP-only session cookie.            |
+| `POST` | `/api/auth/logout`          | Authenticated  | Invalidate session; clears cookie.                                          |
+| `GET`  | `/api/auth/me`              | Authenticated  | Retrieve current user profile and rating.                                   |
+| `POST` | `/api/games/upload`         | Authenticated  | Upload and parameterize PGN; deduplicates; enqueues 6NF analysis job.       |
+| `GET`  | `/api/games`                | Authenticated  | List paginated games for current user via `v_games` view.                   |
+| `GET`  | `/api/games/:id`            | Authenticated  | Retrieve single game metadata and move analysis tree via `v_move_analyses`. |
+| `GET`  | `/api/jobs/:id`             | Authenticated  | Poll analysis job progress (`current_ply`, `total_plies`, `status`).        |
+| `GET`  | `/api/analytics/repertoire` | Authenticated  | Win rates and ACPL grouped by ECO code opening repertoire.                  |
+| `GET`  | `/api/analytics/phases`     | Authenticated  | Centipawn loss and blunder frequencies partitioned by game phase.           |
+| `GET`  | `/api/recommendations`      | Authenticated  | Retrieve personalized puzzle recommendations matching blunder themes.       |
 
 ---
 
 ### 8.2 Parameterized Game Ingestion (`POST /api/games/upload`)
 
 #### Request Headers:
+
 ```http
 Content-Type: application/json
 Cookie: chessiq_session=<JWT_TOKEN>
 ```
 
 #### Request Payload:
+
 ```json
 {
   "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.10.15\"]\n[White \"hikaru\"]\n[Black \"user123\"]\n[Result \"0-1\"]\n\n1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 0-1",
@@ -1621,6 +1635,7 @@ Cookie: chessiq_session=<JWT_TOKEN>
 ```
 
 #### Parameter Resolution Logic:
+
 1. If `user_color` is explicitly provided as `'WHITE'` or `'BLACK'`, it is directly recorded into `game_user_colors`.
 2. If `user_color` is omitted, the server checks `account_handle` against the `White` and `Black` PGN header tags.
 3. If both parameters are omitted, the server attempts a case-insensitive match between the authenticated `user.username` and the PGN `White` and `Black` player headers.
@@ -1637,7 +1652,9 @@ Cookie: chessiq_session=<JWT_TOKEN>
 ## 9. PGN Validation, Deduplication, and Opening Catalog Verification
 
 ### 9.1 Strict Move Sequence Deduplication
+
 To prevent redundant engine computation while allowing legitimate variations reaching transposed board states, ChessIQ enforces **Canonical Move Sequence Deduplication**:
+
 1. The server parses the PGN using `chess.js` and extracts the clean, unannotated Standard Algebraic Notation (SAN) move stream:
    $$\text{MoveStream} = \text{"e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6"}$$
 2. The server computes a SHA-256 cryptographic hash over this canonical string:
@@ -1664,21 +1681,25 @@ To prevent redundant engine computation while allowing legitimate variations rea
 ### 10.1 Deterministic FIFO Queue Claim Query (CTE Pattern)
 
 #### Why Naive `SELECT ... FOR UPDATE` Fails in PostgreSQL:
+
 PostgreSQL explicitly forbids combining `FOR UPDATE [OF ...] SKIP LOCKED` with outer joins (`LEFT JOIN`). Doing so causes the query planner to emit an immediate error:
 `ERROR: FOR UPDATE cannot be applied to the nullable side of an outer join`.
 
 #### The v3.3.0 CTE Solution:
+
 The claim query isolates row locking exclusively to inner-joined tables inside a Common Table Expression (`WITH locked_job AS (...)`). Outer metadata tables (`job_attempt_counts`, `job_max_retries`) are left-joined outside the lock scope against the single materialized row.
 
 Furthermore, to guarantee **strict First-In, First-Out (FIFO) queue semantics**, the query joins `job_created_at jca` and orders explicitly by `jca.created_at ASC` (replacing non-deterministic UUID ordering).
 
 #### Temporal Interval Collision Protection:
+
 When updating `job_statuses` from `pending` to `processing`, the lower bound of the new interval must not collide with the lower bound of the previous interval if both execute within the same clock microsecond. To satisfy the GiST non-overlap constraint, the upper bound of the closing interval and the lower bound of the new interval use:
 $$\text{new\_time} = \text{GREATEST}(\text{CURRENT\_TIMESTAMP}, \text{lower}(\text{valid\_during}) + \text{INTERVAL '1 millisecond'})$$
 
 #### Production `claimNextJob` Implementation (`worker.js`):
+
 ```javascript
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 /**
  * Atomically claims the oldest pending analysis job using a FIFO CTE
@@ -1691,7 +1712,7 @@ const crypto = require('crypto');
 async function claimNextJob(pool, workerId) {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // 1. Isolated Row Lock with Deterministic FIFO Ordering
     const claimQuery = `
@@ -1720,7 +1741,7 @@ async function claimNextJob(pool, workerId) {
 
     const res = await client.query(claimQuery);
     if (res.rows.length === 0) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return null;
     }
 
@@ -1729,7 +1750,8 @@ async function claimNextJob(pool, workerId) {
     const claimToken = crypto.randomUUID();
 
     // 2. Close 'pending' status interval without GiST collision; open 'processing'
-    await client.query(`
+    await client.query(
+      `
       UPDATE job_statuses
       SET valid_during = tstzrange(
         lower(valid_during),
@@ -1737,64 +1759,90 @@ async function claimNextJob(pool, workerId) {
         '[)'
       )
       WHERE job_id = $1 AND upper(valid_during) IS NULL;
-    `, [jobId]);
+    `,
+      [jobId],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_statuses (job_id, status, valid_during)
       VALUES (
         $1,
         'processing',
         tstzrange(CURRENT_TIMESTAMP, NULL, '[)')
       );
-    `, [jobId]);
+    `,
+      [jobId],
+    );
 
     // 3. Increment attempt count and record fencing lease metadata
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_attempt_counts (job_id, attempt_count)
       VALUES ($1, COALESCE($2::int, 0) + 1)
       ON CONFLICT (job_id) DO UPDATE SET attempt_count = job_attempt_counts.attempt_count + 1;
-    `, [jobId, job.attempt_count]);
+    `,
+      [jobId, job.attempt_count],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_claim_tokens (job_id, claim_token) VALUES ($1, $2::uuid)
       ON CONFLICT (job_id) DO UPDATE SET claim_token = EXCLUDED.claim_token;
-    `, [jobId, claimToken]);
+    `,
+      [jobId, claimToken],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_locked_by (job_id, locked_by) VALUES ($1, $2)
       ON CONFLICT (job_id) DO UPDATE SET locked_by = EXCLUDED.locked_by;
-    `, [jobId, workerId]);
+    `,
+      [jobId, workerId],
+    );
 
     const now = new Date();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_locked_at (job_id, locked_at) VALUES ($1, $2)
       ON CONFLICT (job_id) DO UPDATE SET locked_at = EXCLUDED.locked_at;
-    `, [jobId, now]);
+    `,
+      [jobId, now],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_heartbeat_at (job_id, heartbeat_at) VALUES ($1, $2)
       ON CONFLICT (job_id) DO UPDATE SET heartbeat_at = EXCLUDED.heartbeat_at;
-    `, [jobId, now]);
+    `,
+      [jobId, now],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_started_at (job_id, started_at) VALUES ($1, $2)
       ON CONFLICT (job_id) DO NOTHING;
-    `, [jobId, now]);
+    `,
+      [jobId, now],
+    );
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO job_updated_at (job_id, updated_at) VALUES ($1, $2)
       ON CONFLICT (job_id) DO UPDATE SET updated_at = EXCLUDED.updated_at;
-    `, [jobId, now]);
+    `,
+      [jobId, now],
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return {
       jobId,
       gameId: job.game_id,
       claimToken,
-      attemptCount: (job.attempt_count || 0) + 1
+      attemptCount: (job.attempt_count || 0) + 1,
     };
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw err;
   } finally {
     client.release();
@@ -1819,7 +1867,7 @@ async function runWorkerLoop(pool, workerId) {
   const BASE_MS = 200;
   const MAX_MS = 5000;
 
-  listenClient.on('notification', () => {
+  listenClient.on("notification", () => {
     consecutiveEmpty = 0; // Immediate wakeup on new job insertion
   });
 
@@ -1831,14 +1879,17 @@ async function runWorkerLoop(pool, workerId) {
         await processJob(pool, job, workerId);
       } else {
         consecutiveEmpty++;
-        const cappedMs = Math.min(MAX_MS, BASE_MS * Math.pow(2, consecutiveEmpty));
+        const cappedMs = Math.min(
+          MAX_MS,
+          BASE_MS * Math.pow(2, consecutiveEmpty),
+        );
         // Full jitter: Uniform(0.5, 1.5)
         const jitterMultiplier = 0.5 + Math.random();
         const sleepMs = Math.floor(cappedMs * jitterMultiplier);
         await new Promise((resolve) => setTimeout(resolve, sleepMs));
       }
     } catch (err) {
-      console.error('[WorkerLoop] Unhandled error during cycle:', err);
+      console.error("[WorkerLoop] Unhandled error during cycle:", err);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
@@ -1850,9 +1901,11 @@ async function runWorkerLoop(pool, workerId) {
 ### 10.3 Heartbeat Watchdog & SIGKILL Circuit Breaker (`rowCount`)
 
 #### The Node-Postgres Driver Invariant:
+
 The `pg` driver stores affected row counts on `result.rowCount`. It does **not** define `rowsAffected`. Evaluating `result.rowsAffected === 0` resolves to `undefined === 0` (`false`), silently disabling the circuit breaker and allowing stale workers to overwrite recovered jobs.
 
 #### Uncatchable Termination (`SIGKILL`):
+
 When `result.rowCount === 0`, the worker must not send `SIGTERM` (which engines can trap or delay during intensive search). It must immediately execute an uncatchable `stockfishProcess.kill('SIGKILL')`, abort the analysis loop, and throw `Error('STALE_LEASE_EVICTION')`.
 
 ```javascript
@@ -1861,7 +1914,13 @@ When `result.rowCount === 0`, the worker must not send `SIGTERM` (which engines 
  * Evaluates lease validity strictly via result.rowCount.
  * If rowCount === 0: trips circuit breaker with instant SIGKILL.
  */
-async function sendHeartbeat(pool, jobId, claimToken, currentPly, stockfishProcess) {
+async function sendHeartbeat(
+  pool,
+  jobId,
+  claimToken,
+  currentPly,
+  stockfishProcess,
+) {
   const heartbeatQuery = `
     UPDATE job_heartbeat_at
     SET heartbeat_at = CURRENT_TIMESTAMP
@@ -1885,28 +1944,31 @@ async function sendHeartbeat(pool, jobId, claimToken, currentPly, stockfishProce
   // CIRCUIT BREAKER TRIP: result.rowCount === 0
   if (result.rowCount === 0) {
     console.error(
-      'CRITICAL: Fencing token invalid or lease expired. Tripping circuit breaker immediately.',
-      { jobId, claimToken }
+      "CRITICAL: Fencing token invalid or lease expired. Tripping circuit breaker immediately.",
+      { jobId, claimToken },
     );
 
     // 1. Uncatchable SIGKILL on Stockfish process
     if (stockfishProcess && !stockfishProcess.killed) {
       try {
-        stockfishProcess.kill('SIGKILL');
+        stockfishProcess.kill("SIGKILL");
       } catch (killErr) {
-        console.error('Failed to issue SIGKILL on Stockfish:', killErr);
+        console.error("Failed to issue SIGKILL on Stockfish:", killErr);
       }
     }
 
     // 2. Abort worker execution loop immediately
-    throw new Error('STALE_LEASE_EVICTION');
+    throw new Error("STALE_LEASE_EVICTION");
   }
 
   // Update progress ply (separate non-blocking statement)
-  await pool.query(`
+  await pool.query(
+    `
     INSERT INTO job_current_plies (job_id, current_ply) VALUES ($1, $2)
     ON CONFLICT (job_id) DO UPDATE SET current_ply = EXCLUDED.current_ply;
-  `, [jobId, currentPly]);
+  `,
+    [jobId, currentPly],
+  );
 }
 ```
 
@@ -2001,7 +2063,9 @@ $$ LANGUAGE plpgsql;
 ## 11. Stockfish Engine Management & Formalized Evaluation Mathematics
 
 ### 11.1 Process Lifecycle & Memory Isolation (`Clear Hash`)
+
 To prevent cross-game transposition table contamination while retaining search acceleration across moves of the same game:
+
 1. When a worker claims a new game job, it spawns or resets the Stockfish process.
 2. The worker issues:
    ```text
@@ -2017,8 +2081,9 @@ To prevent cross-game transposition table contamination while retaining search a
 ### 11.2 Formal Polarity Inversion & Centipawn Loss Math
 
 When analyzing non-root moves by evaluating post-move board states (`fen_after`):
-* Stockfish evaluates the position relative to the side whose turn it is to move in `fen_after` (which is the **opponent**).
-* To obtain the evaluation from the active mover's perspective:
+
+- Stockfish evaluates the position relative to the side whose turn it is to move in `fen_after` (which is the **opponent**).
+- To obtain the evaluation from the active mover's perspective:
   $$Eval_{\text{played, mover}} = -1 \times Eval(\text{fen\_after})$$
 
 Let $Eval_{\text{best, mover}}$ be the engine evaluation of the best legal move from `fen_before` (from the mover's perspective).
@@ -2032,7 +2097,8 @@ $$\text{CPL}_{\text{capped}} = \min(1000, \text{CPL}_{\text{raw}})$$
 ### 11.3 Continuous Mate Mapping
 
 To prevent arithmetic NaN or division-by-zero exceptions during forced mate transitions (e.g., throwing away a $+M3$ advantage):
-$$Eval(\text{mate } M) = \begin{cases}
+
+$$ Eval(\text{mate } M) = \begin{cases}
 +10000 - (M \times 100) & \text{if } M > 0 \text{ (Mover delivers mate)} \\
 -10000 - (M \times 100) & \text{if } M < 0 \text{ (Opponent delivers mate)}
 \end{cases}$$
@@ -2190,3 +2256,4 @@ The ChessIQ v3.3.0 implementation is verified complete when:
 8. **Formal Engine Polarity Inversion:** Post-move board evaluations are inverted ($Eval_{\text{played, mover}} = -1 \times Eval(\text{fen\_after})$); forced mate transitions use continuous bounds ($Eval = \pm 10000 \mp (\text{mate\_dist} \times 100)$).
 9. **Catalog-Verified Opening Rules:** Early-ply blunders (e.g., Fool's Mate) are preserved in empirical metrics; opening book moves matching `chess_openings` are tagged with `is_book_move = TRUE` and excluded from ACPL calculations via `WHERE is_book_move = FALSE`.
 10. **Single-Domain Reverse Proxy Topology:** Production deployment routes `app.chessiq.com` and `app.chessiq.com/api` through a single domain, enforcing first-party `SameSite=Lax; Secure=true; HttpOnly=true` cookies with 100% credential retention across Apple WebKit and Chromium browsers.
+$$
