@@ -76,6 +76,10 @@ jobs:
         run: |
           PGPASSWORD=chessiq_dev_password psql -h localhost -U chessiq_admin -d chessiq -c "SELECT fn_verify_6nf_schema();"
 
+      - name: Validate Day 3 PL/pgSQL Ingestion & GiST Constraints (@DB)
+        run: |
+          PGPASSWORD=chessiq_dev_password psql -h localhost -U chessiq_admin -d chessiq -c "SELECT fn_verify_day3_ingestion();"
+
       - name: Verify Backend Integrity & Health Check (@BE)
         run: |
           npm run test:ci --workspace=server
