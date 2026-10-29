@@ -117,6 +117,14 @@ app.get("/api/health", async (req, res, next) => {
       // Schema may not be migrated yet in early stages
     }
 
+    let day3Diag = null;
+    try {
+      const day3Res = await query("SELECT fn_verify_day3_ingestion() AS diag;");
+      day3Diag = day3Res.rows[0]?.diag;
+    } catch (_) {
+      // Day 3 migration may not be applied yet
+    }
+
     const isHealthy = hasUuidOssp && hasBtreeGist;
     const statusCode = isHealthy ? 200 : 503;
 
@@ -139,6 +147,7 @@ app.get("/api/health", async (req, res, next) => {
           btree_gist: hasBtreeGist,
         },
         schema_6nf: schemaDiag,
+        day3_ingestion: day3Diag,
         pool: {
           total: pool.totalCount,
           idle: pool.idleCount,

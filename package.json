@@ -24,7 +24,8 @@
     "format:check": "prettier --check \"**/*.{js,jsx,json,md}\"",
     "build": "npm run build --workspace=client",
     "verify:day1": "bash scripts/verify-day1.sh",
-    "verify:day2": "bash scripts/verify-day2.sh"
+    "verify:day2": "bash scripts/verify-day2.sh",
+    "verify:day3": "bash scripts/verify-day3.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

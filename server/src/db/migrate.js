@@ -167,6 +167,23 @@ async function runMigrations() {
     );
   }
 
+  // Execute Day 3 High-Performance Ingestion & GiST verification if available (Day 3+)
+  try {
+    const { rows: day3Rows } = await pool.query(
+      "SELECT fn_verify_day3_ingestion() AS diagnostic;",
+    );
+    const day3Diagnostic = day3Rows[0]?.diagnostic;
+    logger.info(
+      { day3Diagnostic },
+      "PostgreSQL Day 3 Batch Ingestion Procedure & GiST constraints verified",
+    );
+  } catch (err) {
+    logger.debug(
+      { error: err.message },
+      "Note: fn_verify_day3_ingestion() not yet available or not applied",
+    );
+  }
+
   const totalTime = Date.now() - startTime;
   logger.info(
     {

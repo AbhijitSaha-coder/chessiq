@@ -144,6 +144,9 @@ npm run verify:day1
 
 # Day 2 6NF Schema & 3NF Views Verification
 npm run verify:day2
+
+# Day 3 Batch Ingestion & GiST Constraints Verification
+npm run verify:day3
 ```
 
 ### 5. Launch Full Stack (Server + Client)
@@ -161,7 +164,7 @@ npm run dev
 
 - [x] **Day 1: Industry-Grade Monorepo Baseline, Docker CI/CD, Migration Engine, Express Gateway & Proxy Scaffold**
 - [x] **Day 2: 6NF Master Relational DDL Script & 3NF Reconstruction Views (`@DB`)**
-- [ ] **Day 3:** High-Performance PL/pgSQL Ingestion (`sp_ingest_game_analysis_6nf`) & GiST Constraint Verification (`@DB`)
+- [x] **Day 3: High-Performance PL/pgSQL Ingestion (`sp_ingest_game_analysis_6nf`) & GiST Constraint Verification (`@DB`)**
 - [ ] **Day 4:** Canonical Move Deduplication (`user_game_move_signatures`) & PGN Ingestion Gateway (`@BE`)
 - [ ] **Day 5:** Stockfish NNUE Child Process Worker Pool & Memory Isolation (`@BE`)
 - [ ] **Day 6:** Engine Evaluation Polarity Inversion & Continuous Mate Mapping Mathematics (`@BE`)
