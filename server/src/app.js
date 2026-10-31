@@ -177,12 +177,16 @@ app.get("/api/health", async (req, res, next) => {
   }
 });
 
-// 9. 404 Route Fallback
+// 9. Core Domain API Routes
+const gamesRouter = require("./routes/games");
+app.use("/api/games", gamesRouter);
+
+// 10. 404 Route Fallback
 app.use((req, res, next) => {
   next(AppError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));
 });
 
-// 10. Centralized Operational & Exception Error Handler
+// 11. Centralized Operational & Exception Error Handler
 app.use((err, req, res, next) => {
   // If headers already sent, delegate to Express default handler
   if (res.headersSent) {

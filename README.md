@@ -165,9 +165,9 @@ npm run dev
 - [x] **Day 1: Industry-Grade Monorepo Baseline, Docker CI/CD, Migration Engine, Express Gateway & Proxy Scaffold**
 - [x] **Day 2: 6NF Master Relational DDL Script & 3NF Reconstruction Views (`@DB`)**
 - [x] **Day 3: High-Performance PL/pgSQL Ingestion (`sp_ingest_game_analysis_6nf`) & GiST Constraint Verification (`@DB`)**
-- [ ] **Day 4:** Canonical Move Deduplication (`user_game_move_signatures`) & PGN Ingestion Gateway (`@BE`)
-- [ ] **Day 5:** Stockfish NNUE Child Process Worker Pool & Memory Isolation (`@BE`)
-- [ ] **Day 6:** Engine Evaluation Polarity Inversion & Continuous Mate Mapping Mathematics (`@BE`)
+- [x] **Day 4: Canonical Move Deduplication (`user_game_move_signatures`) & PGN Ingestion Gateway (`@BE`)**
+- [x] **Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (`@BE`)**
+- [x] **Day 6: Engine Evaluation Polarity Inversion & Continuous Mate Mapping Mathematics (`@BE`)**
 - [ ] **Day 7:** PostgreSQL FIFO Queue Claim CTE (`SKIP LOCKED`) & Reactive `LISTEN/NOTIFY` (`@BE`)
 - [ ] **Day 8:** Watchdog Heartbeat & `rowCount === 0` `SIGKILL` Circuit Breaker (`@BE`)
 - [ ] **Day 9:** Stale Job Recovery Sweep (`fn_sweep_stale_jobs`) & Fencing Token Management (`@BE`)
