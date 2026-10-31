@@ -102,7 +102,9 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
       await pool.query("DELETE FROM games WHERE id = $1;", [testGameId]);
     }
     if (testJobId) {
-      await pool.query("DELETE FROM game_analysis_jobs WHERE id = $1;", [testJobId]);
+      await pool.query("DELETE FROM game_analysis_jobs WHERE id = $1;", [
+        testJobId,
+      ]);
     }
     await closePool();
   });
@@ -112,7 +114,9 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
   // ==========================================================================
   describe("PostgreSQL Stored Procedure & GiST Diagnostic Telemetry", () => {
     it("executes fn_verify_day3_ingestion() and asserts PASSED status", async () => {
-      const { rows } = await pool.query("SELECT fn_verify_day3_ingestion() AS diag;");
+      const { rows } = await pool.query(
+        "SELECT fn_verify_day3_ingestion() AS diag;",
+      );
       const diag = rows[0]?.diag;
 
       expect(diag).toBeDefined();
@@ -133,7 +137,9 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
     const analysisId = "a0000000-0000-4000-8000-000000000080";
 
     afterEach(async () => {
-      await pool.query("DELETE FROM game_analyses WHERE id = $1;", [analysisId]);
+      await pool.query("DELETE FROM game_analyses WHERE id = $1;", [
+        analysisId,
+      ]);
     });
 
     it("ingests an 80-ply game in < 50ms and maintains zero-NULL invariants", async () => {
@@ -147,21 +153,22 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
 
         moves.push({
           plyNumber: ply,
-          moveSan: isWhite ? `Nf${ply % 8 + 1}` : `e${ply % 8 + 1}`,
+          moveSan: isWhite ? `Nf${(ply % 8) + 1}` : `e${(ply % 8) + 1}`,
           moveUci: `g1f3`,
           fenBefore: `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 ${ply}`,
           fenAfter: `rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 ${ply}`,
           rawEvalType: isMatePly ? "mate" : "cp",
           rawEvalValue: isMatePly ? 1 : 25,
-          evalCentipawns: isMatePly ? undefined : (isWhite ? 35 : -35),
+          evalCentipawns: isMatePly ? undefined : isWhite ? 35 : -35,
           evalMate: isMatePly ? (isWhite ? 1 : -1) : undefined,
           cplRaw: isBook ? 0 : 15,
           cplCapped: isBook ? 0 : 15,
           winProbability: 0.5421,
           winProbDelta: 0.0125,
           bestMoveUci: ply === 80 ? undefined : "g1f3", // Move 80 has no best move (terminal checkmate)
-          mistakeType: isBook ? "BEST" : (ply === 45 ? "MISTAKE" : "GOOD"),
-          gamePhase: ply <= 20 ? "OPENING" : (ply <= 55 ? "MIDDLEGAME" : "ENDGAME"),
+          mistakeType: isBook ? "BEST" : ply === 45 ? "MISTAKE" : "GOOD",
+          gamePhase:
+            ply <= 20 ? "OPENING" : ply <= 55 ? "MIDDLEGAME" : "ENDGAME",
           pvLine: ["g1f3", "d7d5", "d2d4"],
           isBookMove: isBook,
         });
@@ -195,7 +202,7 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
       // Verify Game Analyses aggregate row
       const { rows: anaRows } = await pool.query(
         "SELECT * FROM v_game_analyses WHERE id = $1;",
-        [analysisId]
+        [analysisId],
       );
       expect(anaRows.length).toBe(1);
       expect(anaRows[0].game_id).toBe(testGameId);
@@ -209,7 +216,7 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
       // Verify Move Analyses reconstruction view
       const { rows: moveRows } = await pool.query(
         "SELECT * FROM v_move_analyses WHERE analysis_id = $1 ORDER BY ply_number ASC;",
-        [analysisId]
+        [analysisId],
       );
       expect(moveRows.length).toBe(80);
 
@@ -231,39 +238,51 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
 
       // Zero-NULL Invariant Assertions on Physical 6NF Tables:
       // 1. Centipawns: plies 1..78 (78 rows), 0 rows for plies 79..80
-      const { rows: cpCount } = await pool.query(`
+      const { rows: cpCount } = await pool.query(
+        `
         SELECT count(*)::int AS count
         FROM move_eval_centipawns mec
         JOIN move_analysis_parents map ON mec.move_id = map.move_id
         WHERE map.analysis_id = $1;
-      `, [analysisId]);
+      `,
+        [analysisId],
+      );
       expect(cpCount[0].count).toBe(78);
 
       // 2. Mates: plies 79..80 (2 rows), 0 rows for plies 1..78
-      const { rows: mateCount } = await pool.query(`
+      const { rows: mateCount } = await pool.query(
+        `
         SELECT count(*)::int AS count
         FROM move_eval_mates mem
         JOIN move_analysis_parents map ON mem.move_id = map.move_id
         WHERE map.analysis_id = $1;
-      `, [analysisId]);
+      `,
+        [analysisId],
+      );
       expect(mateCount[0].count).toBe(2);
 
       // 3. Best UCIs: 79 rows (move 80 was null)
-      const { rows: bestUciCount } = await pool.query(`
+      const { rows: bestUciCount } = await pool.query(
+        `
         SELECT count(*)::int AS count
         FROM move_best_ucis mbu
         JOIN move_analysis_parents map ON mbu.move_id = map.move_id
         WHERE map.analysis_id = $1;
-      `, [analysisId]);
+      `,
+        [analysisId],
+      );
       expect(bestUciCount[0].count).toBe(79);
 
       // 4. Book moves: exactly 12 book moves
-      const { rows: bookCount } = await pool.query(`
+      const { rows: bookCount } = await pool.query(
+        `
         SELECT count(*)::int AS count
         FROM move_is_book_moves mib
         JOIN move_analysis_parents map ON mib.move_id = map.move_id
         WHERE map.analysis_id = $1 AND mib.is_book_move = TRUE;
-      `, [analysisId]);
+      `,
+        [analysisId],
+      );
       expect(bookCount[0].count).toBe(12);
     });
   });
@@ -281,12 +300,12 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
           whiteAcpl: 20,
           blackAcpl: 20,
           moves: [],
-        })
+        }),
       ).rejects.toThrow("ingestGameAnalysis6NF: moves array cannot be empty.");
 
       const { rows } = await pool.query(
         "SELECT * FROM game_analyses WHERE id = $1;",
-        [badAnalysisId]
+        [badAnalysisId],
       );
       expect(rows.length).toBe(0);
     });
@@ -307,8 +326,10 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
               plyNumber: 1,
               moveSan: "e4",
               moveUci: "e2e4",
-              fenBefore: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-              fenAfter: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+              fenBefore:
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              fenAfter:
+                "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
               rawEvalType: "cp",
               rawEvalValue: 20,
               evalCentipawns: 20,
@@ -335,15 +356,18 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
       // Verify complete atomicity: no rows persisted in game_analyses or move_analyses
       const { rows: anaRows } = await pool.query(
         "SELECT * FROM game_analyses WHERE id = $1;",
-        [badAnalysisId]
+        [badAnalysisId],
       );
       expect(anaRows.length).toBe(0);
 
-      const { rows: moveRows } = await pool.query(`
+      const { rows: moveRows } = await pool.query(
+        `
         SELECT count(*)::int AS count
         FROM move_analysis_parents
         WHERE analysis_id = $1;
-      `, [badAnalysisId]);
+      `,
+        [badAnalysisId],
+      );
       expect(moveRows[0].count).toBe(0);
     });
   });
@@ -359,18 +383,24 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
       await pool.query("DELETE FROM job_statuses WHERE job_id = $1;", [jobId]);
 
       // Insert first interval: [2026-01-01, 2026-01-02)
-      await pool.query(`
+      await pool.query(
+        `
         INSERT INTO job_statuses (job_id, status, valid_during)
         VALUES ($1, 'pending', tstzrange('2026-01-01 00:00:00+00', '2026-01-02 00:00:00+00', '[)'));
-      `, [jobId]);
+      `,
+        [jobId],
+      );
 
       // Overlapping interval: [2026-01-01 12:00:00+00, 2026-01-03 00:00:00+00)
       let errorThrown = null;
       try {
-        await pool.query(`
+        await pool.query(
+          `
           INSERT INTO job_statuses (job_id, status, valid_during)
           VALUES ($1, 'processing', tstzrange('2026-01-01 12:00:00+00', '2026-01-03 00:00:00+00', '[)'));
-        `, [jobId]);
+        `,
+          [jobId],
+        );
       } catch (err) {
         errorThrown = err;
       }
@@ -400,32 +430,38 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
 
       try {
         // Initial status: pending
-        await pool.query(`
+        await pool.query(
+          `
           INSERT INTO job_statuses (job_id, status, valid_during)
           VALUES ($1, 'pending', tstzrange(CURRENT_TIMESTAMP, NULL, '[)'));
-        `, [freshJobId]);
+        `,
+          [freshJobId],
+        );
 
         // Rapid transition 1: pending -> processing
         const { rows: trans1 } = await pool.query(
           "SELECT fn_transition_job_status($1, 'processing') AS new_range;",
-          [freshJobId]
+          [freshJobId],
         );
         expect(trans1[0].new_range).toBeDefined();
 
         // Rapid transition 2: processing -> completed (executed immediately in back-to-back query)
         const { rows: trans2 } = await pool.query(
           "SELECT fn_transition_job_status($1, 'completed') AS new_range;",
-          [freshJobId]
+          [freshJobId],
         );
         expect(trans2[0].new_range).toBeDefined();
 
         // Verify status history
-        const { rows: statuses } = await pool.query(`
+        const { rows: statuses } = await pool.query(
+          `
           SELECT status, valid_during, lower(valid_during) AS start_t, upper(valid_during) AS end_t
           FROM job_statuses
           WHERE job_id = $1
           ORDER BY lower(valid_during) ASC;
-        `, [freshJobId]);
+        `,
+          [freshJobId],
+        );
 
         expect(statuses.length).toBe(3);
         expect(statuses[0].status).toBe("pending");
@@ -433,22 +469,28 @@ describe("Day 3: High-Performance PL/pgSQL Ingestion & GiST Verification (@DB)",
 
         expect(statuses[1].status).toBe("processing");
         // Non-overlap & seamless continuum: processing start must equal pending end
-        expect(new Date(statuses[1].start_t).getTime()).toBe(new Date(statuses[0].end_t).getTime());
+        expect(new Date(statuses[1].start_t).getTime()).toBe(
+          new Date(statuses[0].end_t).getTime(),
+        );
         expect(statuses[1].end_t).not.toBeNull();
 
         expect(statuses[2].status).toBe("completed");
         // Completed start must equal processing end
-        expect(new Date(statuses[2].start_t).getTime()).toBe(new Date(statuses[1].end_t).getTime());
+        expect(new Date(statuses[2].start_t).getTime()).toBe(
+          new Date(statuses[1].end_t).getTime(),
+        );
         expect(statuses[2].end_t).toBeNull(); // Currently active status has no upper bound
 
         // Verify active status in 3NF reconstruction view
         const { rows: jobView } = await pool.query(
           "SELECT status FROM v_game_analysis_jobs WHERE id = $1;",
-          [freshJobId]
+          [freshJobId],
         );
         expect(jobView[0].status).toBe("completed");
       } finally {
-        await pool.query("DELETE FROM game_analysis_jobs WHERE id = $1;", [freshJobId]);
+        await pool.query("DELETE FROM game_analysis_jobs WHERE id = $1;", [
+          freshJobId,
+        ]);
       }
     });
   });

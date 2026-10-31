@@ -142,9 +142,7 @@ class StockfishWorker extends EventEmitter {
         this._waitForLine(isUciOk, this.searchTimeoutMs)
           .then(async () => {
             // Step 2: Configure options
-            this._sendCommand(
-              `setoption name Threads value ${this.threads}`,
-            );
+            this._sendCommand(`setoption name Threads value ${this.threads}`);
             this._sendCommand(`setoption name Hash value ${this.hashMb}`);
             // MultiPV = 1 for single best line
             this._sendCommand("setoption name MultiPV value 1");
@@ -449,7 +447,9 @@ class StockfishWorker extends EventEmitter {
       const timer = setTimeout(() => {
         const idx = this._lineListeners.indexOf(handler);
         if (idx !== -1) this._lineListeners.splice(idx, 1);
-        reject(new Error(`Timeout waiting for expected line after ${timeout}ms`));
+        reject(
+          new Error(`Timeout waiting for expected line after ${timeout}ms`),
+        );
       }, timeout);
 
       const handler = (line) => {

@@ -84,10 +84,20 @@ chess_project/
 │   │   ├── config/env.js          # Zod runtime environment validator
 │   │   ├── db/pool.js             # pg.Pool singleton & LISTEN client
 │   │   ├── db/migrate.js          # SHA-256 verified migration engine
+│   │   ├── routes/games.js        # Transactional PGN upload & deduplication gateway
+│   │   ├── services/pgnParser.js  # PGN parsing, FEN tracking & canonical hashing
+│   │   ├── engine/
+│   │   │   ├── uciProtocol.js     # UCI protocol text parser & command builders
+│   │   │   ├── stockfishWorker.js # Stockfish child process manager & memory isolation
+│   │   │   ├── stockfishPool.js   # Bounded concurrency worker pool & crash recovery
+│   │   │   └── evalMath.js        # Polarity inversion, continuous mate & mistake tiers
 │   │   └── utils/                 # AppError and Pino structured logger
 │   └── tests/
 │       ├── health.test.js         # Gateway integration test suite
-│       └── day2-schema.test.js    # 6NF DDL, GiST constraints, and 3NF views suite
+│       ├── day2-schema.test.js    # 6NF DDL, GiST constraints, and 3NF views suite
+│       ├── day4-deduplication.test.js # Canonical move deduplication & PGN ingestion suite
+│       ├── day5-stockfish-pool.test.js # Stockfish worker pool & UCI parser suite
+│       └── day6-eval-math.test.js # Engine eval math & polarity inversion suite
 │
 ├── client/                        # Frontend Single-Domain Client
 │   ├── index.html                 # HTML5 Shell
@@ -99,7 +109,11 @@ chess_project/
 │
 └── scripts/
     ├── verify-day1.sh             # Automated Day 1 verification & seal script
-    └── verify-day2.sh             # Automated Day 2 6NF DDL & 3NF views seal script
+    ├── verify-day2.sh             # Automated Day 2 6NF DDL & 3NF views seal script
+    ├── verify-day3.sh             # Automated Day 3 PL/pgSQL & GiST constraint seal script
+    ├── verify-day4.sh             # Automated Day 4 Canonical Deduplication seal script
+    ├── verify-day5.sh             # Automated Day 5 Stockfish Pool seal script
+    └── verify-day6.sh             # Automated Day 6 Polarity Inversion & Eval Math seal script
 ```
 
 ---
@@ -147,6 +161,15 @@ npm run verify:day2
 
 # Day 3 Batch Ingestion & GiST Constraints Verification
 npm run verify:day3
+
+# Day 4 Canonical Deduplication & PGN Gateway Verification
+npm run verify:day4
+
+# Day 5 Stockfish NNUE Worker Pool & Memory Isolation Verification
+npm run verify:day5
+
+# Day 6 Engine Evaluation Polarity Inversion & Continuous Mate Math Verification
+npm run verify:day6
 ```
 
 ### 5. Launch Full Stack (Server + Client)

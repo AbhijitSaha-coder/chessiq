@@ -154,4 +154,3 @@ async function ingestGameAnalysis6NF(client, payload) {
 module.exports = {
   ingestGameAnalysis6NF,
 };
-

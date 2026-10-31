@@ -1342,16 +1342,17 @@ export default function App() {
                     />
 
                     {/* Active Ply Marker */}
-                    {currentPlyIndex > 0 && currentPlyIndex <= gameMoves.length && (
-                      <line
-                        x1={currentPlyIndex - 1}
-                        y1="0"
-                        x2={currentPlyIndex - 1}
-                        y2="100"
-                        stroke="#f43f5e"
-                        strokeWidth="2"
-                      />
-                    )}
+                    {currentPlyIndex > 0 &&
+                      currentPlyIndex <= gameMoves.length && (
+                        <line
+                          x1={currentPlyIndex - 1}
+                          y1="0"
+                          x2={currentPlyIndex - 1}
+                          y2="100"
+                          stroke="#f43f5e"
+                          strokeWidth="2"
+                        />
+                      )}
                   </svg>
                 </div>
               </div>
@@ -1470,9 +1471,7 @@ export default function App() {
                             >
                               {whitePly.san}
                             </span>
-                            {renderClassificationBadge(
-                              whitePly.classification,
-                            )}
+                            {renderClassificationBadge(whitePly.classification)}
                           </div>
                         ) : (
                           <div />
@@ -1507,9 +1506,7 @@ export default function App() {
                             >
                               {blackPly.san}
                             </span>
-                            {renderClassificationBadge(
-                              blackPly.classification,
-                            )}
+                            {renderClassificationBadge(blackPly.classification)}
                           </div>
                         ) : (
                           <div />
@@ -1682,7 +1679,12 @@ export default function App() {
                     color: "var(--accent-emerald)",
                   }}
                 >
-                  8 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>cp loss</span>
+                  8{" "}
+                  <span
+                    style={{ fontSize: "12px", color: "var(--text-muted)" }}
+                  >
+                    cp loss
+                  </span>
                 </div>
                 <p
                   style={{
@@ -1691,7 +1693,8 @@ export default function App() {
                     marginTop: "6px",
                   }}
                 >
-                  Authoritative book lines followed cleanly with high memorization.
+                  Authoritative book lines followed cleanly with high
+                  memorization.
                 </p>
               </div>
 
@@ -1736,7 +1739,12 @@ export default function App() {
                     color: "var(--accent-amber)",
                   }}
                 >
-                  24 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>cp loss</span>
+                  24{" "}
+                  <span
+                    style={{ fontSize: "12px", color: "var(--text-muted)" }}
+                  >
+                    cp loss
+                  </span>
                 </div>
                 <p
                   style={{
@@ -1745,7 +1753,8 @@ export default function App() {
                     marginTop: "6px",
                   }}
                 >
-                  Tactical accuracy drops under multi-piece tension and king attacks.
+                  Tactical accuracy drops under multi-piece tension and king
+                  attacks.
                 </p>
               </div>
 
@@ -1790,7 +1799,12 @@ export default function App() {
                     color: "var(--accent-emerald)",
                   }}
                 >
-                  12 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>cp loss</span>
+                  12{" "}
+                  <span
+                    style={{ fontSize: "12px", color: "var(--text-muted)" }}
+                  >
+                    cp loss
+                  </span>
                 </div>
                 <p
                   style={{
@@ -1799,7 +1813,8 @@ export default function App() {
                     marginTop: "6px",
                   }}
                 >
-                  Pawn promotion and king activity technique executed with high precision.
+                  Pawn promotion and king activity technique executed with high
+                  precision.
                 </p>
               </div>
             </div>
@@ -1877,11 +1892,24 @@ export default function App() {
                     Rated 2100
                   </span>
                 </div>
-                <h4 style={{ fontSize: "15px", fontWeight: "700", marginBottom: "6px" }}>
+                <h4
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: "700",
+                    marginBottom: "6px",
+                  }}
+                >
                   Nakamura's Missed Defense
                 </h4>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "14px" }}>
-                  After Black played 25... Nxe4?, find White's decisive queen infiltration to win the game.
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--text-secondary)",
+                    marginBottom: "14px",
+                  }}
+                >
+                  After Black played 25... Nxe4?, find White's decisive queen
+                  infiltration to win the game.
                 </p>
                 <button
                   onClick={() => {
@@ -1932,11 +1960,24 @@ export default function App() {
                     Rated 2500
                   </span>
                 </div>
-                <h4 style={{ fontSize: "15px", fontWeight: "700", marginBottom: "6px" }}>
+                <h4
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: "700",
+                    marginBottom: "6px",
+                  }}
+                >
                   Kasparov's Immortal Rook Sacrifice
                 </h4>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "14px" }}>
-                  White to move on Move 24. Find the legendary double rook sacrifice that broke Topalov's defenses.
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--text-secondary)",
+                    marginBottom: "14px",
+                  }}
+                >
+                  White to move on Move 24. Find the legendary double rook
+                  sacrifice that broke Topalov's defenses.
                 </p>
                 <button
                   onClick={() => {
@@ -1979,14 +2020,18 @@ export default function App() {
           <span>
             Stockfish 16 NNUE Engine:{" "}
             <strong style={{ color: "var(--accent-emerald)" }}>
-              {telemetry?.status === "healthy" ? "Online (Connected)" : "Connecting..."}
+              {telemetry?.status === "healthy"
+                ? "Online (Connected)"
+                : "Connecting..."}
             </strong>
           </span>
           <span style={{ color: "var(--border-color)" }}>•</span>
           <span>
             Latency:{" "}
             <strong style={{ color: "var(--text-secondary)" }}>
-              {telemetry?.latency_ms !== undefined ? `${telemetry.latency_ms} ms` : "4 ms"}
+              {telemetry?.latency_ms !== undefined
+                ? `${telemetry.latency_ms} ms`
+                : "4 ms"}
             </strong>
           </span>
         </div>

@@ -25,7 +25,10 @@
     "build": "npm run build --workspace=client",
     "verify:day1": "bash scripts/verify-day1.sh",
     "verify:day2": "bash scripts/verify-day2.sh",
-    "verify:day3": "bash scripts/verify-day3.sh"
+    "verify:day3": "bash scripts/verify-day3.sh",
+    "verify:day4": "bash scripts/verify-day4.sh",
+    "verify:day5": "bash scripts/verify-day5.sh",
+    "verify:day6": "bash scripts/verify-day6.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

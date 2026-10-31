@@ -46,10 +46,9 @@ router.post("/upload", async (req, res, next) => {
     try {
       parsed = parsePgn(pgn);
     } catch (parseErr) {
-      throw AppError.validationError(
-        `Invalid PGN: ${parseErr.message}`,
-        { field: "pgn" },
-      );
+      throw AppError.validationError(`Invalid PGN: ${parseErr.message}`, {
+        field: "pgn",
+      });
     }
 
     const { headers, moves, totalPlies, moveSignature, rawPgn } = parsed;

@@ -154,7 +154,9 @@ describe("Day 6: Formalized Engine Evaluation Mathematics (@BE)", () => {
     it("is strictly monotonic with respect to centipawns", () => {
       const evals = [-800, -400, -100, 0, 100, 400, 800];
       for (let i = 0; i < evals.length - 1; i++) {
-        expect(winProbability(evals[i])).toBeLessThan(winProbability(evals[i + 1]));
+        expect(winProbability(evals[i])).toBeLessThan(
+          winProbability(evals[i + 1]),
+        );
       }
     });
   });
@@ -218,10 +220,10 @@ describe("Day 6: Formalized Engine Evaluation Mathematics (@BE)", () => {
   describe("§11.5 Opening Book ACPL Calculation", () => {
     it("excludes book moves from average centipawn loss computation", () => {
       const moves = [
-        { cplCapped: 5, isBookMove: true },   // e4 (book)
-        { cplCapped: 10, isBookMove: true },  // Nf3 (book)
+        { cplCapped: 5, isBookMove: true }, // e4 (book)
+        { cplCapped: 10, isBookMove: true }, // Nf3 (book)
         { cplCapped: 50, isBookMove: false }, // d4 (non-book)
-        { cplCapped: 150, isBookMove: false },// blunder (non-book)
+        { cplCapped: 150, isBookMove: false }, // blunder (non-book)
       ];
 
       // Average of non-book moves: (50 + 150) / 2 = 100

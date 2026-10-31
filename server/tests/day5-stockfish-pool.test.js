@@ -46,7 +46,12 @@ function createMockStockfishProcess() {
 
         if (line === "uci") {
           setImmediate(() => {
-            stdout.emit("data", Buffer.from("id name Stockfish 16.1 NNUE\nid author the Stockfish developers\nuciok\n"));
+            stdout.emit(
+              "data",
+              Buffer.from(
+                "id name Stockfish 16.1 NNUE\nid author the Stockfish developers\nuciok\n",
+              ),
+            );
           });
         } else if (line === "isready") {
           setImmediate(() => {
@@ -90,7 +95,8 @@ describe("Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (@B
   // ==========================================================================
   describe("UCI Protocol Parser (uciProtocol.js)", () => {
     it("parses centipawn evaluation info line accurately", () => {
-      const line = "info depth 14 seldepth 18 multipv 1 score cp 32 nodes 48123 time 120 pv e2e4 e7e5 g1f3";
+      const line =
+        "info depth 14 seldepth 18 multipv 1 score cp 32 nodes 48123 time 120 pv e2e4 e7e5 g1f3";
       const parsed = parseInfoLine(line);
 
       expect(parsed).not.toBeNull();
@@ -104,7 +110,8 @@ describe("Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (@B
     });
 
     it("parses forced mate evaluation info line accurately", () => {
-      const line = "info depth 12 score mate 3 nodes 25000 time 80 pv e7e8q b1a1 e8e1";
+      const line =
+        "info depth 12 score mate 3 nodes 25000 time 80 pv e7e8q b1a1 e8e1";
       const parsed = parseInfoLine(line);
 
       expect(parsed).not.toBeNull();
@@ -122,7 +129,9 @@ describe("Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (@B
     });
 
     it("ignores non-evaluation info strings", () => {
-      expect(parseInfoLine("info string NNUE evaluation using nn-0000000000a0.nnue")).toBeNull();
+      expect(
+        parseInfoLine("info string NNUE evaluation using nn-0000000000a0.nnue"),
+      ).toBeNull();
       expect(parseInfoLine("id name Stockfish")).toBeNull();
       expect(parseInfoLine("")).toBeNull();
       expect(parseInfoLine(null)).toBeNull();
@@ -189,9 +198,15 @@ describe("Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (@B
 
       // Verify command sequence: uci -> setoption Threads -> setoption Hash -> MultiPV -> isready
       expect(mockChildProcess.commandsReceived).toContain("uci");
-      expect(mockChildProcess.commandsReceived).toContain("setoption name Threads value 2");
-      expect(mockChildProcess.commandsReceived).toContain("setoption name Hash value 128");
-      expect(mockChildProcess.commandsReceived).toContain("setoption name MultiPV value 1");
+      expect(mockChildProcess.commandsReceived).toContain(
+        "setoption name Threads value 2",
+      );
+      expect(mockChildProcess.commandsReceived).toContain(
+        "setoption name Hash value 128",
+      );
+      expect(mockChildProcess.commandsReceived).toContain(
+        "setoption name MultiPV value 1",
+      );
       expect(mockChildProcess.commandsReceived).toContain("isready");
     });
 
@@ -235,7 +250,9 @@ describe("Day 5: Stockfish NNUE Child Process Worker Pool & Memory Isolation (@B
         time: 120,
       });
 
-      expect(mockChildProcess.commandsReceived).toContain(`position fen ${fen}`);
+      expect(mockChildProcess.commandsReceived).toContain(
+        `position fen ${fen}`,
+      );
       expect(mockChildProcess.commandsReceived).toContain("go depth 14");
     });
 

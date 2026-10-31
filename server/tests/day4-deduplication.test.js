@@ -70,8 +70,12 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
       expect(ply1.san).toBe("e4");
       expect(ply1.uci).toBe("e2e4");
       expect(ply1.color).toBe("WHITE");
-      expect(ply1.fenBefore).toBe("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-      expect(ply1.fenAfter).toBe("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
+      expect(ply1.fenBefore).toBe(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      );
+      expect(ply1.fenAfter).toBe(
+        "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      );
       expect(ply1.gamePhase).toBe("OPENING");
 
       // Verify second ply (1... e5)
@@ -154,18 +158,24 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
     });
 
     it("Priority 1: Rejects invalid user_color value", () => {
-      expect(() => resolvePlayerColor(headers, "hikaru", "RED")).toThrow("Invalid user_color");
+      expect(() => resolvePlayerColor(headers, "hikaru", "RED")).toThrow(
+        "Invalid user_color",
+      );
     });
 
     it("Priority 2: Matches account_handle against PGN White/Black headers", () => {
-      expect(resolvePlayerColor(headers, "random_user", null, "hikaru")).toBe("WHITE");
-      expect(resolvePlayerColor(headers, "random_user", null, "magnus")).toBe("BLACK");
+      expect(resolvePlayerColor(headers, "random_user", null, "hikaru")).toBe(
+        "WHITE",
+      );
+      expect(resolvePlayerColor(headers, "random_user", null, "magnus")).toBe(
+        "BLACK",
+      );
     });
 
     it("Priority 2: Rejects non-matching account_handle", () => {
-      expect(() => resolvePlayerColor(headers, "random", null, "unknown_player")).toThrow(
-        "Account handle \"unknown_player\" does not match",
-      );
+      expect(() =>
+        resolvePlayerColor(headers, "random", null, "unknown_player"),
+      ).toThrow('Account handle "unknown_player" does not match');
     });
 
     it("Priority 3: Matches authenticated username against White/Black case-insensitively", () => {
@@ -175,7 +185,7 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
 
     it("Priority 4: Throws error when user cannot be unambiguously matched", () => {
       expect(() => resolvePlayerColor(headers, "unrelated_user")).toThrow(
-        "Authenticated user \"unrelated_user\" does not match PGN White",
+        'Authenticated user "unrelated_user" does not match PGN White',
       );
     });
   });
@@ -197,9 +207,7 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
   // ==========================================================================
   describe("API Gateway Ingestion: POST /api/games/upload", () => {
     it("rejects request with 400 when PGN is missing or empty", async () => {
-      const res = await request(app)
-        .post("/api/games/upload")
-        .send({});
+      const res = await request(app).post("/api/games/upload").send({});
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty("error", "VALIDATION_ERROR");
@@ -209,7 +217,9 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
     it("rejects request with 400 when PGN has invalid syntax", async () => {
       const res = await request(app)
         .post("/api/games/upload")
-        .send({ pgn: "Invalid notation that cannot be parsed by chess engine" });
+        .send({
+          pgn: "Invalid notation that cannot be parsed by chess engine",
+        });
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty("error", "VALIDATION_ERROR");
@@ -217,12 +227,10 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
     });
 
     it("rejects request with 422 when user_color is not valid", async () => {
-      const res = await request(app)
-        .post("/api/games/upload")
-        .send({
-          pgn: SHORT_GAME_PGN,
-          user_color: "GREEN",
-        });
+      const res = await request(app).post("/api/games/upload").send({
+        pgn: SHORT_GAME_PGN,
+        user_color: "GREEN",
+      });
 
       expect(res.status).toBe(422);
       expect(res.body).toHaveProperty("error", "AMBIGUOUS_PLAYER_IDENTITY");
@@ -237,12 +245,10 @@ describe("Day 4: Canonical Move Deduplication & PGN Ingestion Gateway (@BE)", ()
 
 1. a4 b6 2. a5 Bb7 3. axb6 axb6 1-0`;
 
-      const res = await request(app)
-        .post("/api/games/upload")
-        .send({
-          pgn: uniquePgn,
-          user_color: "WHITE",
-        });
+      const res = await request(app).post("/api/games/upload").send({
+        pgn: uniquePgn,
+        user_color: "WHITE",
+      });
 
       // If DB is connected, assert 201 Created
       if (res.status === 201) {
