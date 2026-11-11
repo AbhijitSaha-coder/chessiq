@@ -22,17 +22,19 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 15000;
+let lastSessionExpiredDispatchAt = 0;
 
 /**
  * Executes an HTTP request through the single-domain reverse proxy (/api)
  * @param {string} endpoint - API path (e.g. '/api/health')
- * @param {RequestInit & { timeoutMs?: number }} [options]
+ * @param {RequestInit & { timeoutMs?: number, suppressAuthEvent?: boolean }} [options]
  * @returns {Promise<any>}
  */
 export async function apiClient(endpoint, options = {}) {
   const {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     headers = {},
+    suppressAuthEvent = false,
     ...fetchOptions
   } = options;
 
@@ -41,7 +43,6 @@ export async function apiClient(endpoint, options = {}) {
 
   const config = {
     method: "GET",
-    credentials: "include", // Enforce first-party cookie transmission
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -49,6 +50,7 @@ export async function apiClient(endpoint, options = {}) {
     },
     signal: controller.signal,
     ...fetchOptions,
+    credentials: "include", // Strictly enforce first-party cookie transmission
   };
 
   try {
@@ -65,13 +67,32 @@ export async function apiClient(endpoint, options = {}) {
     }
 
     if (!response.ok) {
-      // 401 Unauthorized Session Expiration Dispatch
-      if (response.status === 401 && typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("chessiq:session_expired", {
-            detail: { status: 401, error: data?.error || "UNAUTHORIZED" },
-          }),
-        );
+      // Avoid triggering session expiration for login/register probes or suppressed checks
+      const isAuthCredentialEndpoint =
+        typeof endpoint === "string" &&
+        (endpoint.startsWith("/api/auth/login") ||
+          endpoint.startsWith("/api/auth/register"));
+
+      // 401 Unauthorized Session Expiration Dispatch (debounced to prevent concurrent storms)
+      if (
+        response.status === 401 &&
+        !suppressAuthEvent &&
+        !isAuthCredentialEndpoint &&
+        typeof window !== "undefined"
+      ) {
+        const now = Date.now();
+        if (now - lastSessionExpiredDispatchAt > 1000) {
+          lastSessionExpiredDispatchAt = now;
+          window.dispatchEvent(
+            new CustomEvent("chessiq:session_expired", {
+              detail: {
+                status: 401,
+                error: data?.error || "UNAUTHORIZED",
+                endpoint,
+              },
+            }),
+          );
+        }
       }
 
       throw new ApiError(
@@ -119,6 +140,12 @@ export const api = {
   put: (endpoint, body, options) =>
     apiClient(endpoint, {
       method: "PUT",
+      body: JSON.stringify(body),
+      ...options,
+    }),
+  patch: (endpoint, body, options) =>
+    apiClient(endpoint, {
+      method: "PATCH",
       body: JSON.stringify(body),
       ...options,
     }),

@@ -93,6 +93,11 @@ export default function InteractiveChessboard({
   onToggleEngineArrow,
   isSoundEnabled = true,
   onToggleSound,
+  disableExploration = false,
+  allowInteraction = true,
+  showEvalBar = true,
+  extraSquareStyles = {},
+  extraArrows = [],
 }) {
   // Exploration / Variation Mode State
   const [isExploring, setIsExploring] = useState(false);
@@ -211,13 +216,20 @@ export default function InteractiveChessboard({
       };
     });
 
+    // 5. Merge optional external square highlights (e.g., puzzle hints)
+    if (extraSquareStyles && typeof extraSquareStyles === "object") {
+      Object.entries(extraSquareStyles).forEach(([sq, styleObj]) => {
+        styles[sq] = { ...(styles[sq] || {}), ...styleObj };
+      });
+    }
+
     return styles;
-  }, [lastMoveSquares, checkedKingSquare, selectedSquare, legalMoves]);
+  }, [lastMoveSquares, checkedKingSquare, selectedSquare, legalMoves, extraSquareStyles]);
 
   // Best Move / Threat Arrows via react-chessboard customArrows
   const customArrows = useMemo(() => {
-    if (!showEngineArrow) return [];
-    const arrows = [];
+    const arrows = Array.isArray(extraArrows) ? [...extraArrows] : [];
+    if (!showEngineArrow) return arrows;
 
     // If game review provides a recommended bestMove
     if (currentMove?.bestMove) {
@@ -245,7 +257,7 @@ export default function InteractiveChessboard({
     }
 
     return arrows;
-  }, [showEngineArrow, currentMove, position, lastMoveSquares]);
+  }, [showEngineArrow, currentMove, position, lastMoveSquares, extraArrows]);
 
   // Execute sound trigger based on move flags
   const triggerMoveSound = useCallback(
@@ -270,6 +282,7 @@ export default function InteractiveChessboard({
   // Handle Piece Drop (Drag & Drop)
   const handlePieceDrop = useCallback(
     (sourceSquare, targetSquare) => {
+      if (!allowInteraction) return false;
       try {
         const tempChess = new Chess(activeFen);
         const move = tempChess.move({
@@ -280,18 +293,24 @@ export default function InteractiveChessboard({
 
         if (!move) return false;
 
-        // Play audio
-        triggerMoveSound(move, tempChess);
-
-        // Check if this move matches the actual game review line
+        // Check if this move matches the actual game review or puzzle line
         if (onMovePlayed) {
           const matched = onMovePlayed(move);
           if (matched) {
+            triggerMoveSound(move, tempChess);
             setSelectedSquare(null);
             setLegalMoves([]);
             return true;
           }
+          if (disableExploration) {
+            setSelectedSquare(null);
+            setLegalMoves([]);
+            return false;
+          }
         }
+
+        // Play audio for exploration move
+        triggerMoveSound(move, tempChess);
 
         // Diverging move: enter exploration / try-a-move mode
         setIsExploring(true);
@@ -315,12 +334,20 @@ export default function InteractiveChessboard({
         return false;
       }
     },
-    [activeFen, explorationMoves, triggerMoveSound, onMovePlayed],
+    [
+      allowInteraction,
+      disableExploration,
+      activeFen,
+      explorationMoves,
+      triggerMoveSound,
+      onMovePlayed,
+    ],
   );
 
   // Handle Square Click (Click-to-Move)
   const handleSquareClick = useCallback(
     (square) => {
+      if (!allowInteraction) return;
       // If a piece is already selected:
       if (selectedSquare) {
         // Clicking same square deselects
@@ -488,85 +515,87 @@ export default function InteractiveChessboard({
         }}
       >
         {/* Synchronized Evaluation Bar with Dynamic Flipping Inversion */}
-        <div
-          style={{
-            width: "32px",
-            background: "#1e293b",
-            borderRadius: "6px",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent:
-              boardOrientation === "white" ? "flex-end" : "flex-start",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            position: "relative",
-            boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.5)",
-          }}
-          title={`Evaluation: ${advantage.scoreStr} pawns (${boardOrientation.toUpperCase()} perspective)`}
-        >
-          {/* Top Piece Marker */}
-          <span
-            style={{
-              position: "absolute",
-              top: "4px",
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              fontSize: "9px",
-              color: boardOrientation === "white" ? "#94a3b8" : "#f8fafc",
-              zIndex: 3,
-            }}
-          >
-            {boardOrientation === "white" ? "B" : "W"}
-          </span>
-
-          {/* White Advantage Fill Bar */}
+        {showEvalBar && (
           <div
             style={{
-              width: "100%",
-              height: `${evalBarPercent}%`,
-              background: "#f8fafc",
-              transition: "height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+              width: "32px",
+              background: "#1e293b",
+              borderRadius: "6px",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent:
+                boardOrientation === "white" ? "flex-end" : "flex-start",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              position: "relative",
+              boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.5)",
             }}
-          />
-
-          {/* Evaluation Score Label */}
-          <span
-            style={{
-              position: "absolute",
-              bottom: evalBarPercent > 50 ? "18px" : "auto",
-              top: evalBarPercent <= 50 ? "18px" : "auto",
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              fontSize: "10px",
-              fontFamily: "var(--font-mono)",
-              color: evalBarPercent > 50 ? "#0f172a" : "#f8fafc",
-              fontWeight: "800",
-              zIndex: 4,
-              textShadow:
-                evalBarPercent <= 50 ? "0 1px 2px rgba(0,0,0,0.8)" : "none",
-            }}
+            title={`Evaluation: ${advantage.scoreStr} pawns (${boardOrientation.toUpperCase()} perspective)`}
           >
-            {advantage.scoreStr}
-          </span>
+            {/* Top Piece Marker */}
+            <span
+              style={{
+                position: "absolute",
+                top: "4px",
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                fontSize: "9px",
+                color: boardOrientation === "white" ? "#94a3b8" : "#f8fafc",
+                zIndex: 3,
+              }}
+            >
+              {boardOrientation === "white" ? "B" : "W"}
+            </span>
 
-          {/* Bottom Piece Marker */}
-          <span
-            style={{
-              position: "absolute",
-              bottom: "4px",
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              fontSize: "9px",
-              color: boardOrientation === "white" ? "#0f172a" : "#94a3b8",
-              zIndex: 3,
-            }}
-          >
-            {boardOrientation === "white" ? "W" : "B"}
-          </span>
-        </div>
+            {/* White Advantage Fill Bar */}
+            <div
+              style={{
+                width: "100%",
+                height: `${evalBarPercent}%`,
+                background: "#f8fafc",
+                transition: "height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+            />
+
+            {/* Evaluation Score Label */}
+            <span
+              style={{
+                position: "absolute",
+                bottom: evalBarPercent > 50 ? "18px" : "auto",
+                top: evalBarPercent <= 50 ? "18px" : "auto",
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                fontSize: "10px",
+                fontFamily: "var(--font-mono)",
+                color: evalBarPercent > 50 ? "#0f172a" : "#f8fafc",
+                fontWeight: "800",
+                zIndex: 4,
+                textShadow:
+                  evalBarPercent <= 50 ? "0 1px 2px rgba(0,0,0,0.8)" : "none",
+              }}
+            >
+              {advantage.scoreStr}
+            </span>
+
+            {/* Bottom Piece Marker */}
+            <span
+              style={{
+                position: "absolute",
+                bottom: "4px",
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                fontSize: "9px",
+                color: boardOrientation === "white" ? "#0f172a" : "#94a3b8",
+                zIndex: 3,
+              }}
+            >
+              {boardOrientation === "white" ? "W" : "B"}
+            </span>
+          </div>
+        )}
 
         {/* Interactive react-chessboard */}
         <div style={{ flex: 1, maxWidth: "510px", position: "relative" }}>

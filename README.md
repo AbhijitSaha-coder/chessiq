@@ -120,19 +120,31 @@ chess_project/
 │   ├── index.html                 # HTML5 Shell
 │   ├── vite.config.js             # Local /api proxy to :5000
 │   ├── vercel.json                # Single-domain production edge rewrites
+│   ├── tests/
+│   │   └── day15-16-training-auth.test.mjs # Native ESM client unit & cookie security suite
 │   └── src/
 │       ├── App.jsx                # Live diagnostic telemetry dashboard & analysis interface
+│       ├── context/
+│       │   └── AuthContext.jsx    # Single-domain first-party session provider
 │       ├── components/
 │       │   ├── InteractiveChessboard.jsx # react-chessboard dynamic flipping & arrows
 │       │   ├── AnalysisProgressBar.jsx  # Real-time progress HUD & lease status
 │       │   ├── TacticalBlunderTiers.jsx  # 7-tier classification badges & error navigation
-│       │   └── LongitudinalRadarChart.jsx # 5-axis SVG Spider/Radar chart & phase ACPL
+│       │   ├── LongitudinalRadarChart.jsx # 5-axis SVG Spider/Radar chart & phase ACPL
+│       │   ├── auth/              # LoginForm, ProtectedRoute, AuthStatus & UserGameHistory
+│       │   └── training/          # TrainingDashboard, TrainingStats, PuzzleBoard & Feedback
 │       ├── hooks/
-│       │   └── useAnalysisPolling.js    # Adaptive interval polling lifecycle hook
+│       │   ├── useAnalysisPolling.js    # Adaptive interval polling lifecycle hook
+│       │   ├── useAuth.js         # First-party auth consumer hook
+│       │   └── useTrainingPuzzles.js    # Personalized puzzle state & submission lock hook
 │       ├── utils/
 │       │   ├── chessAudio.js            # Synthesized Web Audio engine
-│       │   └── longitudinalAnalytics.js # Phase partitioning, ACPL & SVG polygon geometry
-│       └── api/client.js          # First-party credentials fetch wrapper
+│       │   ├── longitudinalAnalytics.js # Phase partitioning, ACPL & SVG polygon geometry
+│       │   └── puzzleUtils.js           # chess.js puzzle validation & multi-move helpers
+│       └── api/
+│           ├── client.js          # First-party credentials fetch wrapper
+│           ├── auth.js            # /api/auth/* single-domain authentication bindings
+│           └── puzzles.js         # /api/recommendations & puzzle attempt bindings
 │
 └── scripts/
     ├── verify-day1.sh             # Automated Day 1 verification & seal script
@@ -146,7 +158,8 @@ chess_project/
     ├── verify-day9.sh             # Automated Day 9 Stale Job Recovery & Scheduler seal script
     ├── verify-day10.sh            # Automated Day 10 Opening Book Catalog seal script
     ├── verify-day11.sh            # Automated Day 11 Interactive Chessboard UI seal script
-    └── verify-day12-14.sh         # Automated Day 12-14 Telemetry, Blunder Tiers & Radar Seal Script
+    ├── verify-day12-14.sh         # Automated Day 12-14 Telemetry, Blunder Tiers & Radar Seal Script
+    └── verify-day15-16.sh         # Automated Day 15-16 Personalized Training & Auth Seal Script
 ```
 
 ---
@@ -221,6 +234,9 @@ npm run verify:day11
 
 # Day 12–14 Real-Time Polling, Blunder Classification & Longitudinal Radar Analytics Verification
 npm run verify:day12-14
+
+# Day 15–16 Personalized Training Puzzles & Single-Domain First-Party Cookie Auth Verification (@FE)
+npm run verify:day15-16
 ```
 
 ### 5. Launch Full Stack (Server + Client)
