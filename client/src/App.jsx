@@ -17,6 +17,13 @@ import InteractiveChessboard from "./components/InteractiveChessboard";
 import AnalysisProgressBar from "./components/AnalysisProgressBar";
 import TacticalBlunderTiers from "./components/TacticalBlunderTiers";
 import LongitudinalRadarChart from "./components/LongitudinalRadarChart";
+import TrainingDashboard from "./components/training/TrainingDashboard";
+import AuthStatus from "./components/auth/AuthStatus";
+import LoginForm from "./components/auth/LoginForm";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import UserGameHistory from "./components/auth/UserGameHistory";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 import { useAnalysisPolling, POLLING_STATUS } from "./hooks/useAnalysisPolling";
 import {
   Swords,
@@ -45,12 +52,59 @@ import {
   ShieldAlert,
   Crown,
   HelpCircle,
+  History,
+  Lock,
 } from "lucide-react";
 import api from "./api/client";
 import { MASTER_GAMES, getAdvantageDetails } from "./data/gameReviews";
 
+function buildReviewedGameModel(g, moves = []) {
+  const annotations = {};
+  moves.forEach((m) => {
+    annotations[m.ply_number] = {
+      eval: m.eval_centipawns ? m.eval_centipawns / 100 : 0,
+      mate: m.eval_mate,
+      class: m.mistake_type || "BEST",
+      cpl: m.cpl_capped,
+      comment: `Move ${m.move_san} (${m.mistake_type || "BEST"})`,
+      bestMove: m.best_move_uci,
+    };
+  });
+
+  return {
+    id: g.id,
+    title: `${g.white_player || "White"} vs ${g.black_player || "Black"}`,
+    event: "ChessIQ 6NF Analysis",
+    white: {
+      name: g.white_player || "White",
+      rating: g.white_elo || 1800,
+      accuracy: 92.4,
+    },
+    black: {
+      name: g.black_player || "Black",
+      rating: g.black_elo || 1800,
+      accuracy: 87.1,
+    },
+    result: g.result || "*",
+    eco: g.eco_code || "A00",
+    opening: "Analyzed Game",
+    pgn: g.pgn_raw,
+    annotations,
+  };
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState("analysis"); // "analysis" | "insights" | "puzzles"
+  const [activeTab, setActiveTab] = useState("analysis"); // "analysis" | "history" | "insights" | "puzzles" | "auth"
+
+  return (
+    <AuthProvider onLogoutComplete={() => setActiveTab("analysis")}>
+      <ChessIQDashboard activeTab={activeTab} setActiveTab={setActiveTab} />
+    </AuthProvider>
+  );
+}
+
+function ChessIQDashboard({ activeTab, setActiveTab }) {
+  const { isAuthenticated, user, intendedDestination, setIntendedDestination } = useAuth();
   const [selectedGame, setSelectedGame] = useState(MASTER_GAMES[0]);
   const [currentPlyIndex, setCurrentPlyIndex] = useState(0);
   const [boardOrientation, setBoardOrientation] = useState("white");
@@ -67,39 +121,7 @@ export default function App() {
           const gameRes = await api.get(`/api/games/${jobData.game_id}`);
           const data = gameRes?.data || gameRes;
           if (data?.game) {
-            const g = data.game;
-            const moves = data.moves || [];
-            const annotations = {};
-            moves.forEach((m) => {
-              annotations[m.ply_number] = {
-                eval: m.eval_centipawns ? m.eval_centipawns / 100 : 0,
-                mate: m.eval_mate,
-                class: m.mistake_type || "BEST",
-                cpl: m.cpl_capped,
-                comment: `Move ${m.move_san} (${m.mistake_type || "BEST"})`,
-                bestMove: m.best_move_uci,
-              };
-            });
-            setSelectedGame({
-              id: g.id,
-              title: `${g.white_player || "White"} vs ${g.black_player || "Black"}`,
-              event: "ChessIQ 6NF Analysis",
-              white: {
-                name: g.white_player || "White",
-                rating: g.white_elo || 1800,
-                accuracy: 92.4,
-              },
-              black: {
-                name: g.black_player || "Black",
-                rating: g.black_elo || 1800,
-                accuracy: 87.1,
-              },
-              result: g.result || "*",
-              eco: g.eco_code || "A00",
-              opening: "Analyzed Game",
-              pgn: g.pgn_raw,
-              annotations,
-            });
+            setSelectedGame(buildReviewedGameModel(data.game, data.moves || []));
             setCurrentPlyIndex(0);
           }
         }
@@ -109,14 +131,20 @@ export default function App() {
     },
   });
 
-  // Day 12: PGN Upload & Queue Ingestion Gateway Trigger
+  // Day 12: PGN Upload & Queue Ingestion Gateway Trigger (with Day 16 Auth awareness)
   const handlePgnUpload = async () => {
     if (!customPgnInput.trim()) return;
+    if (!isAuthenticated) {
+      setIntendedDestination("analysis");
+      setActiveTab("auth");
+      return;
+    }
+
     try {
       polling.setUploading();
       const res = await api.post("/api/games/upload", {
         pgn: customPgnInput,
-        user_color: "WHITE",
+        account_handle: user?.username || undefined,
       });
       const data = res?.data || res;
       if (data?.job_id) {
@@ -672,100 +700,148 @@ export default function App() {
           </div>
         </div>
 
-        {/* User-Centric Tab Switcher */}
+        {/* User-Centric Tab Switcher + Single-Domain Session Status */}
         <div
           style={{
             display: "flex",
-            background: "rgba(255, 255, 255, 0.04)",
-            padding: "4px",
-            borderRadius: "8px",
-            border: "1px solid var(--border-color)",
-            gap: "4px",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
           }}
         >
-          <button
-            onClick={() => setActiveTab("analysis")}
+          <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 14px",
-              borderRadius: "6px",
-              background:
-                activeTab === "analysis"
-                  ? "rgba(99, 102, 241, 0.25)"
-                  : "transparent",
-              color:
-                activeTab === "analysis"
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
-              border:
-                activeTab === "analysis"
-                  ? "1px solid rgba(99, 102, 241, 0.4)"
-                  : "none",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
+              background: "rgba(255, 255, 255, 0.04)",
+              padding: "4px",
+              borderRadius: "8px",
+              border: "1px solid var(--border-color)",
+              gap: "4px",
+              flexWrap: "wrap",
             }}
           >
-            <Swords size={16} /> Game Review &amp; Board
-          </button>
+            <button
+              onClick={() => setActiveTab("analysis")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                background:
+                  activeTab === "analysis"
+                    ? "rgba(99, 102, 241, 0.25)"
+                    : "transparent",
+                color:
+                  activeTab === "analysis"
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
+                border:
+                  activeTab === "analysis"
+                    ? "1px solid rgba(99, 102, 241, 0.4)"
+                    : "none",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <Swords size={16} /> Game Review &amp; Board
+            </button>
 
-          <button
-            onClick={() => setActiveTab("insights")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 14px",
-              borderRadius: "6px",
-              background:
-                activeTab === "insights"
-                  ? "rgba(56, 189, 248, 0.25)"
-                  : "transparent",
-              color:
-                activeTab === "insights"
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
-              border:
-                activeTab === "insights"
-                  ? "1px solid rgba(56, 189, 248, 0.4)"
-                  : "none",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            <BarChart3 size={16} /> Player Insights &amp; Accuracy
-          </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                background:
+                  activeTab === "history"
+                    ? "rgba(99, 102, 241, 0.25)"
+                    : "transparent",
+                color:
+                  activeTab === "history"
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
+                border:
+                  activeTab === "history"
+                    ? "1px solid rgba(99, 102, 241, 0.4)"
+                    : "none",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <History size={16} /> My Games
+              {!isAuthenticated && <Lock size={12} color="var(--text-muted)" />}
+            </button>
 
-          <button
-            onClick={() => setActiveTab("puzzles")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 14px",
-              borderRadius: "6px",
-              background:
-                activeTab === "puzzles"
-                  ? "rgba(16, 185, 129, 0.2)"
-                  : "transparent",
-              color:
-                activeTab === "puzzles"
-                  ? "var(--accent-emerald)"
-                  : "var(--text-secondary)",
-              border:
-                activeTab === "puzzles"
-                  ? "1px solid rgba(16, 185, 129, 0.4)"
-                  : "none",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
+            <button
+              onClick={() => setActiveTab("insights")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                background:
+                  activeTab === "insights"
+                    ? "rgba(56, 189, 248, 0.25)"
+                    : "transparent",
+                color:
+                  activeTab === "insights"
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
+                border:
+                  activeTab === "insights"
+                    ? "1px solid rgba(56, 189, 248, 0.4)"
+                    : "none",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <BarChart3 size={16} /> Player Insights
+              {!isAuthenticated && <Lock size={12} color="var(--text-muted)" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("puzzles")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                background:
+                  activeTab === "puzzles"
+                    ? "rgba(16, 185, 129, 0.2)"
+                    : "transparent",
+                color:
+                  activeTab === "puzzles"
+                    ? "var(--accent-emerald)"
+                    : "var(--text-secondary)",
+                border:
+                  activeTab === "puzzles"
+                    ? "1px solid rgba(16, 185, 129, 0.4)"
+                    : "none",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <Target size={16} /> Practice Puzzles
+              {!isAuthenticated && <Lock size={12} color="var(--text-muted)" />}
+            </button>
+          </div>
+
+          <AuthStatus
+            onOpenLogin={() => {
+              setIntendedDestination(activeTab === "auth" ? "analysis" : activeTab);
+              setActiveTab("auth");
             }}
-          >
-            <Target size={16} /> Practice Puzzles
-          </button>
+          />
         </div>
       </header>
 
@@ -1648,10 +1724,23 @@ export default function App() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "flex-end",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     marginTop: "8px",
+                    gap: "8px",
+                    flexWrap: "wrap",
                   }}
                 >
+                  {!isAuthenticated ? (
+                    <span style={{ fontSize: "11px", color: "var(--accent-amber)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Lock size={12} /> Sign in required to persist games
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "11px", color: "var(--accent-emerald)" }}>
+                      Uploading as {user?.username}
+                    </span>
+                  )}
+
                   <button
                     onClick={handlePgnUpload}
                     disabled={
@@ -1674,7 +1763,9 @@ export default function App() {
                           : "pointer",
                     }}
                   >
-                    {polling.status === POLLING_STATUS.UPLOADING
+                    {!isAuthenticated
+                      ? "Sign In & Upload PGN"
+                      : polling.status === POLLING_STATUS.UPLOADING
                       ? "Uploading PGN..."
                       : polling.status === POLLING_STATUS.PROCESSING
                         ? "Analyzing Game..."
@@ -1688,289 +1779,79 @@ export default function App() {
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 2: PLAYER ACCURACY & LONGITUDINAL PROGRESSION                    */}
+      {/* TAB: AUTHENTICATED USER GAME HISTORY (DAY 16 PROTECTED)              */}
       {/* ==================================================================== */}
-      {activeTab === "insights" && (
-        <LongitudinalRadarChart
-          gameMoves={gameMoves}
-          historicalGames={MASTER_GAMES}
-          selectedGame={selectedGame}
-          onSelectGame={(g) => {
-            setSelectedGame(g);
-            setCurrentPlyIndex(0);
-            setActiveTab("analysis");
-          }}
-        />
+      {activeTab === "history" && (
+        <ProtectedRoute
+          destination="history"
+          destinationLabel="Your Analyzed Game History"
+          onAuthenticatedRedirect={(dest) => setActiveTab(dest)}
+        >
+          <UserGameHistory
+            isAuthenticated={isAuthenticated}
+            onLoadAnalyzedGame={(g, moves) => {
+              setSelectedGame(buildReviewedGameModel(g, moves));
+              setCurrentPlyIndex(0);
+              setActiveTab("analysis");
+            }}
+            onGoToUpload={() => setActiveTab("analysis")}
+          />
+        </ProtectedRoute>
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 3: TACTICAL TRAINING PUZZLES (BLUNDER FIXING)                    */}
+      {/* TAB 2: PLAYER ACCURACY & LONGITUDINAL PROGRESSION (DAY 16 PROTECTED) */}
+      {/* ==================================================================== */}
+      {activeTab === "insights" && (
+        <ProtectedRoute
+          destination="insights"
+          destinationLabel="Longitudinal Analytics & Phase Radar"
+          onAuthenticatedRedirect={(dest) => setActiveTab(dest)}
+        >
+          <LongitudinalRadarChart
+            gameMoves={gameMoves}
+            historicalGames={MASTER_GAMES}
+            selectedGame={selectedGame}
+            onSelectGame={(g) => {
+              setSelectedGame(g);
+              setCurrentPlyIndex(0);
+              setActiveTab("analysis");
+            }}
+          />
+        </ProtectedRoute>
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 3: PERSONALIZED TRAINING PUZZLES (DAY 15 + DAY 16 PROTECTED)     */}
       {/* ==================================================================== */}
       {activeTab === "puzzles" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div className="glass-panel" style={{ padding: "24px" }}>
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: "700",
-                marginBottom: "6px",
-              }}
-            >
-              Personalized Tactical Training
-            </h2>
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                lineHeight: "1.6",
-                marginBottom: "20px",
-              }}
-            >
-              Puzzles generated directly from critical tactical turning points
-              and missed opportunities identified in your games.
-            </p>
+        <ProtectedRoute
+          destination="puzzles"
+          destinationLabel="Personalized Tactical Training Puzzles"
+          onAuthenticatedRedirect={(dest) => setActiveTab(dest)}
+        >
+          <TrainingDashboard
+            isAuthenticated={isAuthenticated}
+            isSoundEnabled={isSoundEnabled}
+            onToggleSound={() => setIsSoundEnabled((s) => !s)}
+            onNavigateToAnalysis={() => setActiveTab("analysis")}
+          />
+        </ProtectedRoute>
+      )}
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                gap: "16px",
-              }}
-            >
-              {personalizedPuzzles.length > 0 ? (
-                personalizedPuzzles.map((p, idx) => {
-                  const mainTheme = p.themes?.[0] || {
-                    theme_code: "tactics",
-                    description: "Tactical Drill",
-                  };
-                  const ratingColor =
-                    p.rating >= 2000
-                      ? "var(--accent-cyan)"
-                      : p.rating >= 1500
-                        ? "var(--accent-amber)"
-                        : "var(--accent-emerald)";
-                  return (
-                    <div
-                      key={p.puzzle_id || p.id || idx}
-                      style={{
-                        background: "rgba(255, 255, 255, 0.02)",
-                        padding: "20px",
-                        borderRadius: "10px",
-                        border: "1px solid var(--border-color)",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "12px",
-                              fontWeight: "700",
-                              color: "var(--accent-cyan)",
-                              textTransform: "capitalize",
-                            }}
-                          >
-                            {mainTheme.theme_code}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              padding: "2px 8px",
-                              background: "rgba(255, 255, 255, 0.06)",
-                              color: ratingColor,
-                              borderRadius: "4px",
-                              fontWeight: "700",
-                              fontFamily: "var(--font-mono)",
-                            }}
-                          >
-                            Rated {p.rating}
-                          </span>
-                        </div>
-                        <h4
-                          style={{
-                            fontSize: "15px",
-                            fontWeight: "700",
-                            marginBottom: "6px",
-                          }}
-                        >
-                          {mainTheme.description}
-                        </h4>
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "var(--text-secondary)",
-                            marginBottom: "14px",
-                            lineHeight: "1.5",
-                          }}
-                        >
-                          {p.match_reason ||
-                            "Find the decisive Stockfish engine continuation from this tactical position."}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleSolvePuzzle(p)}
-                        className="btn-primary"
-                        style={{
-                          fontSize: "12px",
-                          padding: "6px 14px",
-                          alignSelf: "flex-start",
-                        }}
-                      >
-                        Solve in Game Review →
-                      </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <>
-                  <div
-                    style={{
-                      background: "rgba(255, 255, 255, 0.02)",
-                      padding: "20px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-color)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          color: "var(--accent-rose)",
-                        }}
-                      >
-                        Tactical Blunder Punisher
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          padding: "2px 8px",
-                          background: "rgba(244, 63, 94, 0.15)",
-                          color: "#fb7185",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        Rated 2100
-                      </span>
-                    </div>
-                    <h4
-                      style={{
-                        fontSize: "15px",
-                        fontWeight: "700",
-                        marginBottom: "6px",
-                      }}
-                    >
-                      Nakamura's Missed Defense
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--text-secondary)",
-                        marginBottom: "14px",
-                      }}
-                    >
-                      After Black played 25... Nxe4?, find White's decisive
-                      queen infiltration to win the game.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSelectedGame(MASTER_GAMES[0]);
-                        setCurrentPlyIndex(50); // Move 25... Nxe4
-                        setActiveTab("analysis");
-                      }}
-                      className="btn-primary"
-                      style={{ fontSize: "12px", padding: "6px 14px" }}
-                    >
-                      Solve in Game Review →
-                    </button>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "rgba(255, 255, 255, 0.02)",
-                      padding: "20px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-color)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          color: "var(--accent-cyan)",
-                        }}
-                      >
-                        Brilliant Move Spotlight
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          padding: "2px 8px",
-                          background: "rgba(56, 189, 248, 0.15)",
-                          color: "#38bdf8",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        Rated 2500
-                      </span>
-                    </div>
-                    <h4
-                      style={{
-                        fontSize: "15px",
-                        fontWeight: "700",
-                        marginBottom: "6px",
-                      }}
-                    >
-                      Kasparov's Immortal Rook Sacrifice
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--text-secondary)",
-                        marginBottom: "14px",
-                      }}
-                    >
-                      White to move on Move 24. Find the legendary double rook
-                      sacrifice that broke Topalov's defenses.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSelectedGame(MASTER_GAMES[1]);
-                        setCurrentPlyIndex(46); // Move 23... Qd6
-                        setActiveTab("analysis");
-                      }}
-                      className="btn-primary"
-                      style={{ fontSize: "12px", padding: "6px 14px" }}
-                    >
-                      Solve in Game Review →
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* ==================================================================== */}
+      {/* SIGN-IN / REGISTRATION VIEW (DAY 16)                                 */}
+      {/* ==================================================================== */}
+      {activeTab === "auth" && (
+        <LoginForm
+          onSuccess={() => {
+            const dest = intendedDestination && intendedDestination !== "auth"
+              ? intendedDestination
+              : "analysis";
+            setIntendedDestination(null);
+            setActiveTab(dest);
+          }}
+        />
       )}
 
       {/* ==================================================================== */}
