@@ -24,10 +24,21 @@ export default function ProtectedRoute({
   } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && destination && intendedDestination !== destination) {
+    if (
+      !isLoading &&
+      !isAuthenticated &&
+      destination &&
+      intendedDestination !== destination
+    ) {
       setIntendedDestination(destination);
     }
-  }, [isLoading, isAuthenticated, destination, intendedDestination, setIntendedDestination]);
+  }, [
+    isLoading,
+    isAuthenticated,
+    destination,
+    intendedDestination,
+    setIntendedDestination,
+  ]);
 
   if (isLoading) {
     return (
@@ -42,8 +53,14 @@ export default function ProtectedRoute({
           margin: "24px auto",
         }}
       >
-        <Shield size={28} color="var(--accent-cyan)" style={{ marginBottom: "12px" }} />
-        <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "6px" }}>
+        <Shield
+          size={28}
+          color="var(--accent-cyan)"
+          style={{ marginBottom: "12px" }}
+        />
+        <h3
+          style={{ fontSize: "16px", fontWeight: "700", marginBottom: "6px" }}
+        >
           Verifying Session Security...
         </h3>
         <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>

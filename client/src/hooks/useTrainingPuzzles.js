@@ -34,7 +34,11 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
   const [backendStats, setBackendStats] = useState(null);
   const [backendWeaknesses, setBackendWeaknesses] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, offset: 0, hasMore: false });
+  const [pagination, setPagination] = useState({
+    total: 0,
+    offset: 0,
+    hasMore: false,
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -57,7 +61,8 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
   const [hintLevel, setHintLevel] = useState(0); // 0 = hidden, 1 = piece square, 2 = single move arrow
   const [boardOrientation, setBoardOrientation] = useState("white");
   const [localAttemptErrors, setLocalAttemptErrors] = useState(0);
-  const [pendingSubmissionPayload, setPendingSubmissionPayload] = useState(null);
+  const [pendingSubmissionPayload, setPendingSubmissionPayload] =
+    useState(null);
 
   // Refs for cleanup and concurrency locks
   const abortControllerRef = useRef(null);
@@ -87,7 +92,11 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
 
   // Dashboard stats computed strictly from real backend items & stats
   const dashboardStats = useMemo(() => {
-    return aggregateTrainingDashboardStats(rawPuzzles, backendStats, backendWeaknesses);
+    return aggregateTrainingDashboardStats(
+      rawPuzzles,
+      backendStats,
+      backendWeaknesses,
+    );
   }, [rawPuzzles, backendStats, backendWeaknesses]);
 
   // Available tactical themes derived from backend recommendations
@@ -128,7 +137,9 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
 
       if (puzzle.isCompleted) {
         setSolveState(PUZZLE_SOLVE_STATE.SOLVED);
-        setFeedbackMessage("You have completed this personalized tactical puzzle.");
+        setFeedbackMessage(
+          "You have completed this personalized tactical puzzle.",
+        );
       } else {
         setSolveState(PUZZLE_SOLVE_STATE.READY);
         setFeedbackMessage(
@@ -164,7 +175,9 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
         setIsLoadingMore(true);
       }
 
-      const band = PUZZLE_DIFFICULTY_BANDS[difficultyFilter] || PUZZLE_DIFFICULTY_BANDS.ALL;
+      const band =
+        PUZZLE_DIFFICULTY_BANDS[difficultyFilter] ||
+        PUZZLE_DIFFICULTY_BANDS.ALL;
 
       try {
         const res = await fetchPersonalizedPuzzles({
@@ -181,12 +194,17 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
         setRawPuzzles((prev) => (reset ? res.items : [...prev, ...res.items]));
         if (res.stats) setBackendStats(res.stats);
         if (res.weaknesses) setBackendWeaknesses(res.weaknesses);
-        if (Array.isArray(res.recentActivity)) setRecentActivity(res.recentActivity);
+        if (Array.isArray(res.recentActivity))
+          setRecentActivity(res.recentActivity);
 
         setPagination({
-          total: res.pagination?.total ?? (reset ? res.items.length : rawPuzzles.length + res.items.length),
+          total:
+            res.pagination?.total ??
+            (reset ? res.items.length : rawPuzzles.length + res.items.length),
           offset,
-          hasMore: Boolean(res.pagination?.has_more ?? res.items.length === PAGE_LIMIT),
+          hasMore: Boolean(
+            res.pagination?.has_more ?? res.items.length === PAGE_LIMIT,
+          ),
         });
 
         if (reset) {
@@ -201,7 +219,9 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
             "Personalized puzzle endpoint (/api/recommendations) returned HTTP 404. Backend Day 15 route deployment is required.",
           );
         } else {
-          setFetchError(err?.message || "Failed to load personalized training puzzles.");
+          setFetchError(
+            err?.message || "Failed to load personalized training puzzles.",
+          );
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -210,7 +230,13 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
         }
       }
     },
-    [enabled, themeFilter, difficultyFilter, pagination.offset, rawPuzzles.length],
+    [
+      enabled,
+      themeFilter,
+      difficultyFilter,
+      pagination.offset,
+      rawPuzzles.length,
+    ],
   );
 
   useEffect(() => {
@@ -239,12 +265,14 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
       const response = await submitPuzzleAttempt(payload);
 
       // Verify backend confirmed completion authoritatively
-      const verifiedCorrect = response?.is_correct !== false && response?.verified !== false;
+      const verifiedCorrect =
+        response?.is_correct !== false && response?.verified !== false;
 
       if (!verifiedCorrect) {
         setSolveState(PUZZLE_SOLVE_STATE.INCORRECT);
         setFeedbackMessage(
-          response?.message || "Backend verification rejected this continuation. Reset and try again.",
+          response?.message ||
+            "Backend verification rejected this continuation. Reset and try again.",
         );
         return false;
       }
@@ -252,7 +280,8 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
       // Mark puzzle completed in local view strictly after backend confirms 200 OK
       setRawPuzzles((prev) =>
         prev.map((item) =>
-          item.recommendationId === puzzle.recommendationId && item.puzzleId === puzzle.puzzleId
+          item.recommendationId === puzzle.recommendationId &&
+          item.puzzleId === puzzle.puzzleId
             ? {
                 ...item,
                 isCompleted: Boolean(payload.isCompleted),
@@ -283,9 +312,12 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
       const errMsg =
         err instanceof ApiError && err.status === 404
           ? "Puzzle attempt endpoint returned HTTP 404 — cannot persist completion until backend attempt route is available."
-          : err?.message || "Network error while saving puzzle progress. Your completion was NOT recorded.";
+          : err?.message ||
+            "Network error while saving puzzle progress. Your completion was NOT recorded.";
       setSubmissionError(errMsg);
-      setFeedbackMessage("Progress verification failed due to a backend/network error.");
+      setFeedbackMessage(
+        "Progress verification failed due to a backend/network error.",
+      );
       return false;
     } finally {
       submitLockRef.current = false;

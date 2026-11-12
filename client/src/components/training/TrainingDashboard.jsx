@@ -16,7 +16,10 @@ import {
   Swords,
   Loader2,
 } from "lucide-react";
-import { useTrainingPuzzles, PUZZLE_SOLVE_STATE } from "../../hooks/useTrainingPuzzles";
+import {
+  useTrainingPuzzles,
+  PUZZLE_SOLVE_STATE,
+} from "../../hooks/useTrainingPuzzles";
 import { PUZZLE_DIFFICULTY_BANDS } from "../../utils/puzzleUtils";
 import TrainingStats from "./TrainingStats";
 import PuzzleBoard from "./PuzzleBoard";
@@ -83,13 +86,26 @@ export default function TrainingDashboard({
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
               <Target size={20} color="var(--accent-emerald)" />
               <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
                 Personalized Tactical Training
               </h2>
             </div>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "var(--text-secondary)",
+                lineHeight: "1.5",
+              }}
+            >
               Targeted training puzzles sourced from your personalized{" "}
               <code>v_training_puzzles</code> and{" "}
               <code>v_training_recommendations</code> backend telemetry.
@@ -142,7 +158,8 @@ export default function TrainingDashboard({
             Loading Personalized Puzzles...
           </h3>
           <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-            Querying <code>/api/recommendations</code> for your historical game weaknesses.
+            Querying <code>/api/recommendations</code> for your historical game
+            weaknesses.
           </p>
         </div>
       )}
@@ -172,7 +189,13 @@ export default function TrainingDashboard({
                 : "Unable to Retrieve Personalized Puzzles"}
             </h3>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+          <p
+            style={{
+              fontSize: "13px",
+              color: "var(--text-secondary)",
+              lineHeight: "1.6",
+            }}
+          >
             {fetchError}
           </p>
           <div>
@@ -204,7 +227,16 @@ export default function TrainingDashboard({
                 gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  color: "var(--text-secondary)",
+                }}
+              >
                 <Filter size={14} color="var(--accent-cyan)" /> Filter Puzzles
               </div>
 
@@ -339,7 +371,13 @@ export default function TrainingDashboard({
               }}
             >
               {/* Left Column: Chessboard Solver + Controls */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                }}
+              >
                 <PuzzleBoard
                   boardFen={boardFen}
                   boardOrientation={boardOrientation}
@@ -365,7 +403,13 @@ export default function TrainingDashboard({
               </div>
 
               {/* Right Column: Tactical Feedback + Personalized Queue */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "16px",
+                }}
+              >
                 <PuzzleFeedback
                   puzzle={activePuzzle}
                   solveState={solveState}
@@ -439,7 +483,9 @@ export default function TrainingDashboard({
                           cursor: isLoadingMore ? "wait" : "pointer",
                         }}
                       >
-                        {isLoadingMore ? "Loading More Puzzles..." : "Load More Puzzles"}
+                        {isLoadingMore
+                          ? "Loading More Puzzles..."
+                          : "Load More Puzzles"}
                       </button>
                     </div>
                   )}

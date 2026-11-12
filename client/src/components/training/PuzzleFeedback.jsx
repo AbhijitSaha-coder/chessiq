@@ -67,7 +67,9 @@ export default function PuzzleFeedback({
           {isSolved && <CheckCircle2 size={18} color="var(--accent-emerald)" />}
           {isIncorrect && <XCircle size={18} color="var(--accent-rose)" />}
           {isSubmitting && <Loader2 size={18} color="var(--accent-cyan)" />}
-          {isSubmissionError && <AlertTriangle size={18} color="var(--accent-rose)" />}
+          {isSubmissionError && (
+            <AlertTriangle size={18} color="var(--accent-rose)" />
+          )}
           {(solveState === PUZZLE_SOLVE_STATE.READY || isStepCorrect) && (
             <Sparkles size={18} color="var(--accent-cyan)" />
           )}
@@ -116,7 +118,14 @@ export default function PuzzleFeedback({
       </div>
 
       {/* Feedback Body */}
-      <p style={{ fontSize: "13px", color: "var(--text-primary)", lineHeight: "1.5", margin: 0 }}>
+      <p
+        style={{
+          fontSize: "13px",
+          color: "var(--text-primary)",
+          lineHeight: "1.5",
+          margin: 0,
+        }}
+      >
         {feedbackMessage}
       </p>
 
@@ -180,12 +189,20 @@ export default function PuzzleFeedback({
         >
           {puzzle.explanation && (
             <div style={{ color: "var(--text-secondary)", lineHeight: "1.5" }}>
-              <strong style={{ color: "var(--accent-emerald)" }}>Tactical Pattern:</strong>{" "}
+              <strong style={{ color: "var(--accent-emerald)" }}>
+                Tactical Pattern:
+              </strong>{" "}
               {puzzle.explanation}
             </div>
           )}
-          <div style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
-            <strong>Solution Line:</strong> {puzzle.rawMovesString || playedMoves.join(" ")}
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <strong>Solution Line:</strong>{" "}
+            {puzzle.rawMovesString || playedMoves.join(" ")}
           </div>
           {hasNextPuzzle && (
             <div style={{ marginTop: "4px" }}>

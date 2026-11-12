@@ -112,9 +112,13 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
 
       const wasAuthenticated = statusRef.current === AUTH_STATUS.AUTHENTICATED;
       setUser(null);
-      setStatus(wasAuthenticated ? AUTH_STATUS.EXPIRED : AUTH_STATUS.UNAUTHENTICATED);
+      setStatus(
+        wasAuthenticated ? AUTH_STATUS.EXPIRED : AUTH_STATUS.UNAUTHENTICATED,
+      );
       if (wasAuthenticated) {
-        setAuthError("Your session has expired. Please sign in again to continue.");
+        setAuthError(
+          "Your session has expired. Please sign in again to continue.",
+        );
       }
 
       if (onSessionExpired) {
@@ -124,7 +128,10 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
 
     window.addEventListener("chessiq:session_expired", handleSessionExpired);
     return () => {
-      window.removeEventListener("chessiq:session_expired", handleSessionExpired);
+      window.removeEventListener(
+        "chessiq:session_expired",
+        handleSessionExpired,
+      );
     };
   }, [onSessionExpired]);
 
@@ -143,7 +150,9 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
       }
 
       if (!verifiedUser) {
-        throw new Error("Login succeeded but no authenticated user profile was returned.");
+        throw new Error(
+          "Login succeeded but no authenticated user profile was returned.",
+        );
       }
 
       sessionExpiryHandledRef.current = false;
@@ -160,7 +169,8 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
       }
 
       const msg =
-        err?.message || "Invalid credentials or unable to reach authentication server.";
+        err?.message ||
+        "Invalid credentials or unable to reach authentication server.";
       setAuthError(msg);
       return { ok: false, error: msg, status: err?.status || 0 };
     } finally {
@@ -181,7 +191,9 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
       }
 
       if (!verifiedUser) {
-        throw new Error("Registration succeeded but failed to load authenticated profile.");
+        throw new Error(
+          "Registration succeeded but failed to load authenticated profile.",
+        );
       }
 
       sessionExpiryHandledRef.current = false;
@@ -212,7 +224,10 @@ export function AuthProvider({ children, onSessionExpired, onLogoutComplete }) {
       await logoutUser();
     } catch (err) {
       // Even if cookie was already invalid/missing on server, clear local React state
-      if (!(err instanceof ApiError && (err.status === 401 || err.status === 404))) {
+      if (!(
+        err instanceof ApiError &&
+        (err.status === 401 || err.status === 404)
+      )) {
         setAuthError(err?.message || "Logout encountered a network error");
       }
     } finally {

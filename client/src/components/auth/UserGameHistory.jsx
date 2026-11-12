@@ -28,22 +28,29 @@ export default function UserGameHistory({
   const [loadingGameId, setLoadingGameId] = useState(null);
   const [error, setError] = useState(null);
 
-  const loadHistory = useCallback(async (signal) => {
-    if (!isAuthenticated) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await api.get("/api/games", { signal });
-      const data = res?.data || res || {};
-      const list = Array.isArray(data.games) ? data.games : Array.isArray(data) ? data : [];
-      setGames(list);
-    } catch (err) {
-      if (signal?.aborted || err?.name === "AbortError") return;
-      setError(err?.message || "Failed to fetch your game history.");
-    } finally {
-      if (!signal?.aborted) setIsLoading(false);
-    }
-  }, [isAuthenticated]);
+  const loadHistory = useCallback(
+    async (signal) => {
+      if (!isAuthenticated) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await api.get("/api/games", { signal });
+        const data = res?.data || res || {};
+        const list = Array.isArray(data.games)
+          ? data.games
+          : Array.isArray(data)
+            ? data
+            : [];
+        setGames(list);
+      } catch (err) {
+        if (signal?.aborted || err?.name === "AbortError") return;
+        setError(err?.message || "Failed to fetch your game history.");
+      } finally {
+        if (!signal?.aborted) setIsLoading(false);
+      }
+    },
+    [isAuthenticated],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,15 +86,22 @@ export default function UserGameHistory({
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
               <History size={20} color="var(--accent-cyan)" />
               <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
                 Your Analyzed Game History
               </h2>
             </div>
             <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-              Private session-protected repository of PGNs submitted under your account (
-              <code>v_games</code>).
+              Private session-protected repository of PGNs submitted under your
+              account (<code>v_games</code>).
             </p>
           </div>
 
@@ -115,8 +129,15 @@ export default function UserGameHistory({
       </div>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: "40px", textAlign: "center" }}>
-          <Loader2 size={26} color="var(--accent-cyan)" style={{ marginBottom: "10px" }} />
+        <div
+          className="glass-panel"
+          style={{ padding: "40px", textAlign: "center" }}
+        >
+          <Loader2
+            size={26}
+            color="var(--accent-cyan)"
+            style={{ marginBottom: "10px" }}
+          />
           <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
             Loading your game history...
           </p>
@@ -137,7 +158,15 @@ export default function UserGameHistory({
             gap: "12px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fb7185", fontSize: "13px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              color: "#fb7185",
+              fontSize: "13px",
+            }}
+          >
             <AlertTriangle size={18} />
             <span>{error}</span>
           </div>
@@ -153,12 +182,27 @@ export default function UserGameHistory({
       )}
 
       {!isLoading && !error && games.length === 0 && (
-        <div className="glass-panel" style={{ padding: "44px 24px", textAlign: "center" }}>
-          <Inbox size={30} color="var(--accent-cyan)" style={{ marginBottom: "10px" }} />
-          <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "6px" }}>
+        <div
+          className="glass-panel"
+          style={{ padding: "44px 24px", textAlign: "center" }}
+        >
+          <Inbox
+            size={30}
+            color="var(--accent-cyan)"
+            style={{ marginBottom: "10px" }}
+          />
+          <h3
+            style={{ fontSize: "16px", fontWeight: "700", marginBottom: "6px" }}
+          >
             No Uploaded Games Found
           </h3>
-          <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }}>
+          <p
+            style={{
+              fontSize: "13px",
+              color: "var(--text-secondary)",
+              marginBottom: "16px",
+            }}
+          >
             Upload a PGN in Game Review to queue it for Stockfish NNUE analysis.
           </p>
           {onGoToUpload && (
@@ -193,8 +237,20 @@ export default function UserGameHistory({
                 gap: "10px",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    color: "var(--text-primary)",
+                  }}
+                >
                   {g.white_player || "White"} vs {g.black_player || "Black"}
                 </span>
                 <span
@@ -211,7 +267,15 @@ export default function UserGameHistory({
                 </span>
               </div>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "12px", color: "var(--text-secondary)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                }}
+              >
                 <span>ECO: {g.eco_code || "A00"}</span>
                 <span>You: {g.user_color || "WHITE"}</span>
                 {g.white_acpl !== null && g.white_acpl !== undefined && (
@@ -237,7 +301,9 @@ export default function UserGameHistory({
                     alignItems: "center",
                     gap: "5px",
                     fontSize: "11px",
-                    color: g.analysis_completed ? "var(--accent-emerald)" : "var(--accent-amber)",
+                    color: g.analysis_completed
+                      ? "var(--accent-emerald)"
+                      : "var(--accent-amber)",
                   }}
                 >
                   {g.analysis_completed ? (
@@ -258,7 +324,8 @@ export default function UserGameHistory({
                   className="btn-primary"
                   style={{ padding: "5px 12px", fontSize: "12px" }}
                 >
-                  {loadingGameId === g.id ? "Opening..." : "Inspect"} <ArrowRight size={13} />
+                  {loadingGameId === g.id ? "Opening..." : "Inspect"}{" "}
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>

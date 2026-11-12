@@ -7,12 +7,7 @@
 import React from "react";
 import { CheckCircle2, Circle, Zap } from "lucide-react";
 
-export default function PuzzleCard({
-  puzzle,
-  index,
-  isSelected,
-  onSelect,
-}) {
+export default function PuzzleCard({ puzzle, index, isSelected, onSelect }) {
   if (!puzzle) return null;
 
   return (
@@ -100,7 +95,8 @@ export default function PuzzleCard({
             color: "#fbbf24",
           }}
         >
-          <Zap size={12} /> Source blunder: {puzzle.metricEvidence.cpl_lost} cp loss
+          <Zap size={12} /> Source blunder: {puzzle.metricEvidence.cpl_lost} cp
+          loss
         </div>
       )}
     </button>

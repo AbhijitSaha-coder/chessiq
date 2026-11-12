@@ -12,7 +12,8 @@ import api from "./client.js";
  * @returns {Object|null}
  */
 export function extractSafeUser(response) {
-  const raw = response?.data?.user || response?.user || response?.data || response;
+  const raw =
+    response?.data?.user || response?.user || response?.data || response;
   if (!raw || typeof raw !== "object") return null;
   if (!raw.id && !raw.username && !raw.email) return null;
 
@@ -62,13 +63,22 @@ export async function loginUser({ identifier, username, email, password }) {
  * Registers a new user account; backend sets HttpOnly cookie (`chessiq_session`).
  * @param {{ username: string, email: string, password: string, chess_rating?: number }} registration
  */
-export async function registerUser({ username, email, password, chess_rating }) {
+export async function registerUser({
+  username,
+  email,
+  password,
+  chess_rating,
+}) {
   const payload = {
     username: username.trim(),
     email: email.trim(),
     password,
   };
-  if (chess_rating !== undefined && chess_rating !== "" && !isNaN(Number(chess_rating))) {
+  if (
+    chess_rating !== undefined &&
+    chess_rating !== "" &&
+    !isNaN(Number(chess_rating))
+  ) {
     payload.chess_rating = Number(chess_rating);
   }
 

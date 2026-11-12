@@ -104,7 +104,8 @@ export default function App() {
 }
 
 function ChessIQDashboard({ activeTab, setActiveTab }) {
-  const { isAuthenticated, user, intendedDestination, setIntendedDestination } = useAuth();
+  const { isAuthenticated, user, intendedDestination, setIntendedDestination } =
+    useAuth();
   const [selectedGame, setSelectedGame] = useState(MASTER_GAMES[0]);
   const [currentPlyIndex, setCurrentPlyIndex] = useState(0);
   const [boardOrientation, setBoardOrientation] = useState("white");
@@ -121,7 +122,9 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
           const gameRes = await api.get(`/api/games/${jobData.game_id}`);
           const data = gameRes?.data || gameRes;
           if (data?.game) {
-            setSelectedGame(buildReviewedGameModel(data.game, data.moves || []));
+            setSelectedGame(
+              buildReviewedGameModel(data.game, data.moves || []),
+            );
             setCurrentPlyIndex(0);
           }
         }
@@ -838,7 +841,9 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
           <AuthStatus
             onOpenLogin={() => {
-              setIntendedDestination(activeTab === "auth" ? "analysis" : activeTab);
+              setIntendedDestination(
+                activeTab === "auth" ? "analysis" : activeTab,
+              );
               setActiveTab("auth");
             }}
           />
@@ -1732,11 +1737,24 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
                   }}
                 >
                   {!isAuthenticated ? (
-                    <span style={{ fontSize: "11px", color: "var(--accent-amber)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--accent-amber)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
                       <Lock size={12} /> Sign in required to persist games
                     </span>
                   ) : (
-                    <span style={{ fontSize: "11px", color: "var(--accent-emerald)" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--accent-emerald)",
+                      }}
+                    >
                       Uploading as {user?.username}
                     </span>
                   )}
@@ -1766,10 +1784,10 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
                     {!isAuthenticated
                       ? "Sign In & Upload PGN"
                       : polling.status === POLLING_STATUS.UPLOADING
-                      ? "Uploading PGN..."
-                      : polling.status === POLLING_STATUS.PROCESSING
-                        ? "Analyzing Game..."
-                        : "Start Game Review"}
+                        ? "Uploading PGN..."
+                        : polling.status === POLLING_STATUS.PROCESSING
+                          ? "Analyzing Game..."
+                          : "Start Game Review"}
                   </button>
                 </div>
               </div>
@@ -1845,9 +1863,10 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
       {activeTab === "auth" && (
         <LoginForm
           onSuccess={() => {
-            const dest = intendedDestination && intendedDestination !== "auth"
-              ? intendedDestination
-              : "analysis";
+            const dest =
+              intendedDestination && intendedDestination !== "auth"
+                ? intendedDestination
+                : "analysis";
             setIntendedDestination(null);
             setActiveTab(dest);
           }}

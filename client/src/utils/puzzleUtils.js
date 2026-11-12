@@ -8,8 +8,18 @@ import { Chess } from "chess.js";
 
 export const PUZZLE_DIFFICULTY_BANDS = {
   ALL: { key: "ALL", label: "All Ratings", min: null, max: null },
-  BEGINNER: { key: "BEGINNER", label: "< 1200 (Beginner)", min: 400, max: 1199 },
-  INTERMEDIATE: { key: "INTERMEDIATE", label: "1200 – 1799 (Club)", min: 1200, max: 1799 },
+  BEGINNER: {
+    key: "BEGINNER",
+    label: "< 1200 (Beginner)",
+    min: 400,
+    max: 1199,
+  },
+  INTERMEDIATE: {
+    key: "INTERMEDIATE",
+    label: "1200 – 1799 (Club)",
+    min: 1200,
+    max: 1799,
+  },
   ADVANCED: { key: "ADVANCED", label: "1800+ (Master)", min: 1800, max: 3200 },
 };
 
@@ -20,7 +30,12 @@ export const PUZZLE_DIFFICULTY_BANDS = {
  */
 export function inspectPuzzlePosition(fen) {
   if (!fen || typeof fen !== "string") {
-    return { valid: false, orientation: "white", turn: "w", error: "Missing FEN position" };
+    return {
+      valid: false,
+      orientation: "white",
+      turn: "w",
+      error: "Missing FEN position",
+    };
   }
   try {
     const chess = new Chess(fen);
@@ -124,9 +139,9 @@ export function evaluatePuzzleMove({ fen, expectedMoveStr, move }) {
     // Match by canonical UCI OR checkmate equivalence
     const isExactMatch = Boolean(
       expected &&
-        (playedUci === expected.uci ||
-          (played.san === expected.san) ||
-          (chess.isCheckmate())),
+      (playedUci === expected.uci ||
+        played.san === expected.san ||
+        chess.isCheckmate()),
     );
 
     return {
@@ -167,21 +182,31 @@ export function applyForcedReplyMove(fen, replyMoveStr) {
  * Computes hint highlight data without prematurely exposing the full multi-move variation.
  * Level 1 hint highlights the piece square; Level 2 (if explicitly requested) shows the target move square.
  */
-export function buildPuzzleHint(fen, expectedMoveStr, revealDestination = false) {
+export function buildPuzzleHint(
+  fen,
+  expectedMoveStr,
+  revealDestination = false,
+) {
   const expected = resolveExpectedMove(fen, expectedMoveStr);
   if (!expected) return null;
   return {
     fromSquare: expected.from,
     toSquare: revealDestination ? expected.to : null,
-    sanHint: revealDestination ? expected.san : `Move piece on ${expected.from.toUpperCase()}`,
+    sanHint: revealDestination
+      ? expected.san
+      : `Move piece on ${expected.from.toUpperCase()}`,
   };
 }
 
 /**
  * Filters normalized puzzles by tactical theme, rating band, and completion status.
  */
-export function filterPersonalizedPuzzles(items = [], { theme = "ALL", difficulty = "ALL", statusFilter = "ALL" } = {}) {
-  const band = PUZZLE_DIFFICULTY_BANDS[difficulty] || PUZZLE_DIFFICULTY_BANDS.ALL;
+export function filterPersonalizedPuzzles(
+  items = [],
+  { theme = "ALL", difficulty = "ALL", statusFilter = "ALL" } = {},
+) {
+  const band =
+    PUZZLE_DIFFICULTY_BANDS[difficulty] || PUZZLE_DIFFICULTY_BANDS.ALL;
 
   return items.filter((item) => {
     if (theme && theme !== "ALL") {
@@ -207,7 +232,11 @@ export function filterPersonalizedPuzzles(items = [], { theme = "ALL", difficult
  * Computes dashboard statistics from authentic backend recommendation rows and optional server stats.
  * Never fabricates baseline stats when no backend data exists.
  */
-export function aggregateTrainingDashboardStats(items = [], backendStats = null, backendWeaknesses = null) {
+export function aggregateTrainingDashboardStats(
+  items = [],
+  backendStats = null,
+  backendWeaknesses = null,
+) {
   const total =
     backendStats?.total_puzzles !== undefined
       ? Number(backendStats.total_puzzles)
@@ -225,7 +254,8 @@ export function aggregateTrainingDashboardStats(items = [], backendStats = null,
       ? Number(backendStats.correct)
       : backendStats?.correct_count !== undefined
         ? Number(backendStats.correct_count)
-        : items.filter((p) => p.isCompleted && p.lastResult !== "INCORRECT").length;
+        : items.filter((p) => p.isCompleted && p.lastResult !== "INCORRECT")
+            .length;
 
   const incorrect =
     backendStats?.incorrect !== undefined
@@ -252,21 +282,30 @@ export function aggregateTrainingDashboardStats(items = [], backendStats = null,
   items.forEach((item) => {
     const codes =
       item.themes && item.themes.length > 0
-        ? item.themes.map((t) => ({ code: t.theme_code, label: t.description || t.theme_code }))
+        ? item.themes.map((t) => ({
+            code: t.theme_code,
+            label: t.description || t.theme_code,
+          }))
         : item.category
           ? [{ code: item.category, label: item.category }]
           : [];
     codes.forEach(({ code, label }) => {
-      const prev = themeCounts.get(code) || { theme_code: code, label, count: 0, completed: 0 };
+      const prev = themeCounts.get(code) || {
+        theme_code: code,
+        label,
+        count: 0,
+        completed: 0,
+      };
       prev.count += 1;
       if (item.isCompleted) prev.completed += 1;
       themeCounts.set(code, prev);
     });
   });
 
-  const weaknessCategories = Array.isArray(backendWeaknesses) && backendWeaknesses.length > 0
-    ? backendWeaknesses
-    : Array.from(themeCounts.values()).sort((a, b) => b.count - a.count);
+  const weaknessCategories =
+    Array.isArray(backendWeaknesses) && backendWeaknesses.length > 0
+      ? backendWeaknesses
+      : Array.from(themeCounts.values()).sort((a, b) => b.count - a.count);
 
   return {
     total,

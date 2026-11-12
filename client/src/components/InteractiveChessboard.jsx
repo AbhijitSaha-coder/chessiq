@@ -224,7 +224,13 @@ export default function InteractiveChessboard({
     }
 
     return styles;
-  }, [lastMoveSquares, checkedKingSquare, selectedSquare, legalMoves, extraSquareStyles]);
+  }, [
+    lastMoveSquares,
+    checkedKingSquare,
+    selectedSquare,
+    legalMoves,
+    extraSquareStyles,
+  ]);
 
   // Best Move / Threat Arrows via react-chessboard customArrows
   const customArrows = useMemo(() => {

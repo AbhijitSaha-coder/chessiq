@@ -50,7 +50,13 @@ export default function PuzzleBoard({
               border: "2px solid var(--accent-cyan)",
             }}
           />
-          <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)" }}>
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: "700",
+              color: "var(--text-primary)",
+            }}
+          >
             {sideToMove} to Move
           </span>
         </div>
@@ -65,7 +71,9 @@ export default function PuzzleBoard({
                 : "var(--text-secondary)",
           }}
         >
-          {solveState === PUZZLE_SOLVE_STATE.SOLVED ? "COMPLETED" : "INTERACTIVE SOLVER"}
+          {solveState === PUZZLE_SOLVE_STATE.SOLVED
+            ? "COMPLETED"
+            : "INTERACTIVE SOLVER"}
         </span>
       </div>
 

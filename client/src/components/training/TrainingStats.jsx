@@ -37,7 +37,10 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
       >
         <div
           className="glass-panel"
-          style={{ padding: "16px", borderLeft: "3px solid var(--accent-cyan)" }}
+          style={{
+            padding: "16px",
+            borderLeft: "3px solid var(--accent-cyan)",
+          }}
         >
           <div
             style={{
@@ -53,17 +56,32 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
             <span>Personalized Puzzles</span>
             <Target size={14} color="var(--accent-cyan)" />
           </div>
-          <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-primary)" }}>
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: "800",
+              color: "var(--text-primary)",
+            }}
+          >
             {total}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--text-secondary)",
+              marginTop: "4px",
+            }}
+          >
             {completed} completed ({progressPercentage}%)
           </div>
         </div>
 
         <div
           className="glass-panel"
-          style={{ padding: "16px", borderLeft: "3px solid var(--accent-emerald)" }}
+          style={{
+            padding: "16px",
+            borderLeft: "3px solid var(--accent-emerald)",
+          }}
         >
           <div
             style={{
@@ -79,17 +97,32 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
             <span>Correct / Solved</span>
             <CheckCircle2 size={14} color="var(--accent-emerald)" />
           </div>
-          <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--accent-emerald)" }}>
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: "800",
+              color: "var(--accent-emerald)",
+            }}
+          >
             {correct}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--text-secondary)",
+              marginTop: "4px",
+            }}
+          >
             Success rate: <strong>{successPercentage}%</strong>
           </div>
         </div>
 
         <div
           className="glass-panel"
-          style={{ padding: "16px", borderLeft: "3px solid var(--accent-rose)" }}
+          style={{
+            padding: "16px",
+            borderLeft: "3px solid var(--accent-rose)",
+          }}
         >
           <div
             style={{
@@ -105,17 +138,28 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
             <span>Incorrect Attempts</span>
             <XCircle size={14} color="var(--accent-rose)" />
           </div>
-          <div style={{ fontSize: "24px", fontWeight: "800", color: "#fb7185" }}>
+          <div
+            style={{ fontSize: "24px", fontWeight: "800", color: "#fb7185" }}
+          >
             {incorrect}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--text-secondary)",
+              marginTop: "4px",
+            }}
+          >
             Retry available on misses
           </div>
         </div>
 
         <div
           className="glass-panel"
-          style={{ padding: "16px", borderLeft: "3px solid var(--accent-indigo)" }}
+          style={{
+            padding: "16px",
+            borderLeft: "3px solid var(--accent-indigo)",
+          }}
         >
           <div
             style={{
@@ -131,7 +175,13 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
             <span>Training Progress</span>
             <Award size={14} color="var(--accent-indigo)" />
           </div>
-          <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-primary)" }}>
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: "800",
+              color: "var(--text-primary)",
+            }}
+          >
             {progressPercentage}%
           </div>
           <div
@@ -147,7 +197,8 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
               style={{
                 width: `${progressPercentage}%`,
                 height: "100%",
-                background: "linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald))",
+                background:
+                  "linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald))",
                 transition: "width 0.35s ease",
               }}
             />
@@ -202,7 +253,9 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
                     }}
                   >
                     <strong>{w.theme_code || w.category}</strong>
-                    <span style={{ opacity: 0.85, fontFamily: "var(--font-mono)" }}>
+                    <span
+                      style={{ opacity: 0.85, fontFamily: "var(--font-mono)" }}
+                    >
                       ({w.completed ?? 0}/{w.count ?? w.puzzle_count ?? 0})
                     </span>
                   </span>
@@ -228,7 +281,9 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
               >
                 <Clock size={14} /> Recent Training Activity
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
                 {recentActivity.slice(0, 3).map((act, idx) => (
                   <div
                     key={act.id || idx}
@@ -242,7 +297,9 @@ export default function TrainingStats({ stats, recentActivity = [] }) {
                     <span>{act.category || act.theme || "Puzzle Attempt"}</span>
                     <span
                       style={{
-                        color: act.is_correct ? "var(--accent-emerald)" : "#fb7185",
+                        color: act.is_correct
+                          ? "var(--accent-emerald)"
+                          : "#fb7185",
                         fontWeight: "600",
                       }}
                     >

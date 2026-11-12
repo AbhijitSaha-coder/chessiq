@@ -63,7 +63,8 @@ export function normalizePuzzleRecommendation(raw) {
     fen,
     moves: movesArray,
     rawMovesString: Array.isArray(rawMoves) ? rawMoves.join(" ") : rawMoves,
-    rating: p.rating !== undefined && p.rating !== null ? Number(p.rating) : null,
+    rating:
+      p.rating !== undefined && p.rating !== null ? Number(p.rating) : null,
     themes,
     explanation: raw.explanation || p.explanation || raw.description || null,
   };
@@ -87,10 +88,13 @@ export async function fetchPersonalizedPuzzles(params = {}) {
 
   const query = new URLSearchParams();
   if (theme && theme !== "ALL") query.set("theme", theme);
-  if (minRating !== undefined && minRating !== null) query.set("min_rating", String(minRating));
-  if (maxRating !== undefined && maxRating !== null) query.set("max_rating", String(maxRating));
+  if (minRating !== undefined && minRating !== null)
+    query.set("min_rating", String(minRating));
+  if (maxRating !== undefined && maxRating !== null)
+    query.set("max_rating", String(maxRating));
   if (limit !== undefined && limit !== null) query.set("limit", String(limit));
-  if (offset !== undefined && offset !== null) query.set("offset", String(offset));
+  if (offset !== undefined && offset !== null)
+    query.set("offset", String(offset));
 
   const qs = query.toString();
   const endpoint = qs ? `/api/recommendations?${qs}` : "/api/recommendations";
@@ -108,7 +112,9 @@ export async function fetchPersonalizedPuzzles(params = {}) {
 
   const items = rawList
     .map(normalizePuzzleRecommendation)
-    .filter((item) => item !== null && Boolean(item.fen) && item.moves.length > 0);
+    .filter(
+      (item) => item !== null && Boolean(item.fen) && item.moves.length > 0,
+    );
 
   return {
     items,
@@ -145,7 +151,9 @@ export async function submitPuzzleAttempt({
 }) {
   const targetId = recommendationId || puzzleId;
   if (!targetId) {
-    throw new Error("Missing recommendationId or puzzleId for puzzle attempt submission");
+    throw new Error(
+      "Missing recommendationId or puzzleId for puzzle attempt submission",
+    );
   }
 
   const endpoint = recommendationId

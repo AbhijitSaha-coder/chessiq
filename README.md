@@ -168,7 +168,8 @@ chess_project/
     ├── verify-day10.sh            # Automated Day 10 Opening Book Catalog seal script
     ├── verify-day11.sh            # Automated Day 11 Interactive Chessboard UI seal script
     ├── verify-day12-14.sh         # Automated Day 12-14 Telemetry, Blunder Tiers & Radar Seal Script
-    └── verify-day15-16.sh         # Automated Day 15-16 Personalized Training & Auth Seal Script
+    ├── verify-day15.sh            # Automated Day 15 Personalized Training Puzzle Generator Seal Script (@DB)
+    └── verify-day15-16.sh         # Automated Day 15-16 Personalized Training & Auth Seal Script (@FE)
 ```
 
 ---
@@ -243,6 +244,9 @@ npm run verify:day11
 
 # Day 12–14 Real-Time Polling, Blunder Classification & Longitudinal Radar Analytics Verification
 npm run verify:day12-14
+
+# Day 15 Personalized Training Puzzle Generator Verification (@DB)
+npm run verify:day15
 
 # Day 15–16 Personalized Training Puzzles & Single-Domain First-Party Cookie Auth Verification (@FE)
 npm run verify:day15-16

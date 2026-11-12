@@ -8,7 +8,8 @@ import { UserCheck, LogOut, LogIn, ShieldAlert, Loader2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function AuthStatus({ onOpenLogin }) {
-  const { isAuthenticated, isLoading, isExpired, isSubmitting, user, logout } = useAuth();
+  const { isAuthenticated, isLoading, isExpired, isSubmitting, user, logout } =
+    useAuth();
 
   if (isLoading) {
     return (
@@ -45,7 +46,13 @@ export default function AuthStatus({ onOpenLogin }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <UserCheck size={15} color="var(--accent-emerald)" />
-          <span style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-primary)" }}>
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: "600",
+              color: "var(--text-primary)",
+            }}
+          >
             {user.username}
           </span>
           {user.chess_rating !== null && user.chess_rating !== undefined && (
