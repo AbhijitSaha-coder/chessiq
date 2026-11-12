@@ -278,3 +278,4 @@ export function aggregateTrainingDashboardStats(items = [], backendStats = null,
     weaknessCategories,
   };
 }
+
