@@ -5,7 +5,10 @@
  */
 
 const express = require("express");
-const { openingCatalog, normalizeSanMoves } = require("../services/openingCatalog");
+const {
+  openingCatalog,
+  normalizeSanMoves,
+} = require("../services/openingCatalog");
 const { pool } = require("../db/pool");
 const AppError = require("../utils/AppError");
 
@@ -22,14 +25,16 @@ router.get("/", async (req, res, next) => {
 
     let openings = [];
     try {
-      let queryText = "SELECT eco_code, name, variation, pgn_moves FROM v_chess_openings";
+      let queryText =
+        "SELECT eco_code, name, variation, pgn_moves FROM v_chess_openings";
       const params = [];
 
       if (eco) {
         queryText += " WHERE eco_code = $1";
         params.push(eco.toUpperCase());
       } else if (search) {
-        queryText += " WHERE name ILIKE $1 OR variation ILIKE $1 OR eco_code ILIKE $1";
+        queryText +=
+          " WHERE name ILIKE $1 OR variation ILIKE $1 OR eco_code ILIKE $1";
         params.push(`%${search}%`);
       }
 
@@ -122,7 +127,9 @@ router.post("/match", async (req, res, next) => {
     const moveInput = moves || pgn;
 
     if (!moveInput) {
-      throw AppError.validationError("Please provide 'moves' (array or string) or 'pgn' text.");
+      throw AppError.validationError(
+        "Please provide 'moves' (array or string) or 'pgn' text.",
+      );
     }
 
     const matched = openingCatalog.match(moveInput);
@@ -137,4 +144,3 @@ router.post("/match", async (req, res, next) => {
 });
 
 module.exports = router;
-

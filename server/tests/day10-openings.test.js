@@ -28,13 +28,21 @@ const {
   openingCatalog,
   normalizeSanMoves,
 } = require("../src/services/openingCatalog");
-const { computeACPL, computeGameACPLByColor } = require("../src/engine/evalMath");
+const {
+  computeACPL,
+  computeGameACPLByColor,
+} = require("../src/engine/evalMath");
 const openingsRouter = require("../src/routes/openings");
 
 /**
  * Helper to invoke an Express router route handler directly without network socket binding.
  */
-function callRouter(router, method, url, { query = {}, params = {}, body = {} } = {}) {
+function callRouter(
+  router,
+  method,
+  url,
+  { query = {}, params = {}, body = {} } = {},
+) {
   return new Promise((resolve, reject) => {
     const req = {
       method: method.toUpperCase(),
@@ -146,7 +154,8 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
     });
 
     it("strips evaluation annotations ($1, ?, !, ?!, +-) and comments from PGN", () => {
-      const dirty = "1. e4! c5? 2. Nf3 {classical move} d6?! 3. d4 cxd4 4. Nxd4 $1 Nf6";
+      const dirty =
+        "1. e4! c5? 2. Nf3 {classical move} d6?! 3. d4 cxd4 4. Nxd4 $1 Nf6";
       const expected = ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6"];
       expect(normalizeSanMoves(dirty)).toEqual(expected);
     });
@@ -181,7 +190,18 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
     });
 
     it("resolves the deepest matching opening: Najdorf (B90) over B20 Sicilian", () => {
-      const najdorfLine = ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"];
+      const najdorfLine = [
+        "e4",
+        "c5",
+        "Nf3",
+        "d6",
+        "d4",
+        "cxd4",
+        "Nxd4",
+        "Nf6",
+        "Nc3",
+        "a6",
+      ];
       const result = openingCatalog.match(najdorfLine);
       expect(result.matchedOpening).toBeDefined();
       expect(result.matchedOpening.ecoCode).toBe("B90");
@@ -191,7 +211,17 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
     });
 
     it("matches Italian Game: Giuoco Pianissimo (C53) for 9 plies", () => {
-      const pianissimo = ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d3"];
+      const pianissimo = [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bc4",
+        "Bc5",
+        "c3",
+        "Nf6",
+        "d3",
+      ];
       const result = openingCatalog.match(pianissimo);
       expect(result.matchedOpening).toBeDefined();
       expect(result.matchedOpening.ecoCode).toBe("C53");
@@ -224,7 +254,17 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
   describe("Deviation Detection & Sequential is_book_move Boundary Invariant", () => {
     it("identifies book moves up to deviation and marks subsequent plies as false", () => {
       // 1. e4 c5 2. Nf3 Nc6 3. Bc4 (Sicilian with 3. Bc4, deviations follow)
-      const gameMoves = ["e4", "c5", "Nf3", "Nc6", "Bc4", "a6", "h3", "e6", "d4"];
+      const gameMoves = [
+        "e4",
+        "c5",
+        "Nf3",
+        "Nc6",
+        "Bc4",
+        "a6",
+        "h3",
+        "e6",
+        "d4",
+      ];
       const result = openingCatalog.match(gameMoves);
 
       expect(result.matchedOpening).toBeDefined();
@@ -242,7 +282,15 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
     });
 
     it("ensures book move flag is irreversibly false once out of book prefix", () => {
-      const match = openingCatalog.match(["e4", "e5", "Nf3", "Nc6", "h3", "Bc5", "Bc4"]);
+      const match = openingCatalog.match([
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "h3",
+        "Bc5",
+        "Bc4",
+      ]);
       expect(match.bookPlies).toBe(4); // 1. e4 e5 2. Nf3 Nc6
       expect(match.isBookMoveForPly(1)).toBe(true);
       expect(match.isBookMoveForPly(4)).toBe(true);
@@ -273,7 +321,11 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
       const moves = [
         { plyNumber: 1, cplCapped: 50, isBookMove: match.isBookMoveForPly(1) },
         { plyNumber: 2, cplCapped: 10, isBookMove: match.isBookMoveForPly(2) },
-        { plyNumber: 3, cplCapped: 1000, isBookMove: match.isBookMoveForPly(3) }, // 2. g4 blunder
+        {
+          plyNumber: 3,
+          cplCapped: 1000,
+          isBookMove: match.isBookMoveForPly(3),
+        }, // 2. g4 blunder
         { plyNumber: 4, cplCapped: 0, isBookMove: match.isBookMoveForPly(4) },
       ];
 
@@ -295,7 +347,7 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
         { plyNumber: 4, cplCapped: 20, isBookMove: true },
         { plyNumber: 5, cplCapped: 100, isBookMove: false }, // White post-book
         { plyNumber: 6, cplCapped: 200, isBookMove: false }, // Black post-book
-        { plyNumber: 7, cplCapped: 50, isBookMove: false },  // White post-book
+        { plyNumber: 7, cplCapped: 50, isBookMove: false }, // White post-book
         { plyNumber: 8, cplCapped: 300, isBookMove: false }, // Black post-book
       ];
 
@@ -342,7 +394,9 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
       });
       expect(res.statusCode).toBe(200);
       expect(res.body.data.length).toBeGreaterThan(0);
-      expect(res.body.data.every((o) => o.name.toLowerCase().includes("sicilian"))).toBe(true);
+      expect(
+        res.body.data.every((o) => o.name.toLowerCase().includes("sicilian")),
+      ).toBe(true);
     });
 
     it("GET /api/openings/:eco returns specific opening details", async () => {
@@ -378,88 +432,120 @@ describe("Day 10: Opening Book Catalog Verification & ACPL Exclusions (@DB/@BE)"
   // 8. PostgreSQL 6NF Relations & 3NF View Integrity (@DB)
   // ==========================================================================
   describe("PostgreSQL 6NF Relations & 3NF View (v_chess_openings) [@DB]", () => {
-    itDb("seeds at least 50 authoritative ECO openings across the 6NF schema", async () => {
-      const res = await pool.query(
-        "SELECT COUNT(*)::INT AS total FROM chess_openings;",
-      );
-      const total = res.rows[0].total;
-      expect(total).toBeGreaterThanOrEqual(50);
-    });
+    itDb(
+      "seeds at least 50 authoritative ECO openings across the 6NF schema",
+      async () => {
+        const res = await pool.query(
+          "SELECT COUNT(*)::INT AS total FROM chess_openings;",
+        );
+        const total = res.rows[0].total;
+        expect(total).toBeGreaterThanOrEqual(50);
+      },
+    );
 
-    itDb("ensures all five ECO volumes (A, B, C, D, E) are represented in the catalog", async () => {
-      const res = await pool.query(`
+    itDb(
+      "ensures all five ECO volumes (A, B, C, D, E) are represented in the catalog",
+      async () => {
+        const res = await pool.query(`
         SELECT DISTINCT substring(eco_code, 1, 1) AS volume
         FROM chess_openings
         ORDER BY volume ASC;
       `);
-      const volumes = res.rows.map((r) => r.volume);
-      expect(volumes).toContain("A");
-      expect(volumes).toContain("B");
-      expect(volumes).toContain("C");
-      expect(volumes).toContain("D");
-      expect(volumes).toContain("E");
-    });
+        const volumes = res.rows.map((r) => r.volume);
+        expect(volumes).toContain("A");
+        expect(volumes).toContain("B");
+        expect(volumes).toContain("C");
+        expect(volumes).toContain("D");
+        expect(volumes).toContain("E");
+      },
+    );
 
-    itDb("verifies logical 3NF view v_chess_openings joins names, variations, and moves without loss", async () => {
-      const catalog = await getOpeningCatalog(pool);
-      expect(catalog.length).toBeGreaterThanOrEqual(50);
+    itDb(
+      "verifies logical 3NF view v_chess_openings joins names, variations, and moves without loss",
+      async () => {
+        const catalog = await getOpeningCatalog(pool);
+        expect(catalog.length).toBeGreaterThanOrEqual(50);
 
-      const sample = catalog.find((o) => o.ecoCode === "B90");
-      expect(sample).toBeDefined();
-      expect(sample.name).toBe("Sicilian Defense");
-      expect(sample.variation).toBe("Najdorf Variation");
-      expect(sample.pgnMoves).toContain("a6");
-    });
+        const sample = catalog.find((o) => o.ecoCode === "B90");
+        expect(sample).toBeDefined();
+        expect(sample.name).toBe("Sicilian Defense");
+        expect(sample.variation).toBe("Najdorf Variation");
+        expect(sample.pgnMoves).toContain("a6");
+      },
+    );
 
-    itDb("matches Sicilian Najdorf (B90) for full 10-ply sequence in PostgreSQL", async () => {
-      const moves = ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"];
-      const match = await matchOpeningByMoves(pool, moves);
+    itDb(
+      "matches Sicilian Najdorf (B90) for full 10-ply sequence in PostgreSQL",
+      async () => {
+        const moves = [
+          "e4",
+          "c5",
+          "Nf3",
+          "d6",
+          "d4",
+          "cxd4",
+          "Nxd4",
+          "Nf6",
+          "Nc3",
+          "a6",
+        ];
+        const match = await matchOpeningByMoves(pool, moves);
 
-      expect(match).not.toBeNull();
-      expect(match.ecoCode).toBe("B90");
-      expect(match.name).toBe("Sicilian Defense");
-      expect(match.variation).toBe("Najdorf Variation");
-      expect(match.matchedPlies).toBe(10);
-    });
+        expect(match).not.toBeNull();
+        expect(match.ecoCode).toBe("B90");
+        expect(match.name).toBe("Sicilian Defense");
+        expect(match.variation).toBe("Najdorf Variation");
+        expect(match.matchedPlies).toBe(10);
+      },
+    );
 
-    itDb("preserves early-ply blunders: Fool's Mate (1. f3 e5 2. g4) is NOT a book move in DB", async () => {
-      const isBookF3 = await isBookMove(pool, ["f3"]);
-      const isBookG4 = await isBookMove(pool, ["f3", "e5", "g4"]);
+    itDb(
+      "preserves early-ply blunders: Fool's Mate (1. f3 e5 2. g4) is NOT a book move in DB",
+      async () => {
+        const isBookF3 = await isBookMove(pool, ["f3"]);
+        const isBookG4 = await isBookMove(pool, ["f3", "e5", "g4"]);
 
-      expect(isBookF3).toBe(false);
-      expect(isBookG4).toBe(false);
-    });
+        expect(isBookF3).toBe(false);
+        expect(isBookG4).toBe(false);
+      },
+    );
 
-    itDb("executes fn_calculate_game_acpl and accurately segments book vs non-book moves", async () => {
-      const fakeUuid = "00000000-0000-0000-0000-000000000000";
-      const stats = await calculateGameAcpl(pool, fakeUuid, true);
+    itDb(
+      "executes fn_calculate_game_acpl and accurately segments book vs non-book moves",
+      async () => {
+        const fakeUuid = "00000000-0000-0000-0000-000000000000";
+        const stats = await calculateGameAcpl(pool, fakeUuid, true);
 
-      expect(stats).toHaveProperty("whiteAcpl");
-      expect(stats).toHaveProperty("blackAcpl");
-      expect(stats).toHaveProperty("whiteMovesCounted");
-      expect(stats).toHaveProperty("blackMovesCounted");
-      expect(stats).toHaveProperty("whiteBookExcluded");
-      expect(stats).toHaveProperty("blackBookExcluded");
-    });
+        expect(stats).toHaveProperty("whiteAcpl");
+        expect(stats).toHaveProperty("blackAcpl");
+        expect(stats).toHaveProperty("whiteMovesCounted");
+        expect(stats).toHaveProperty("blackMovesCounted");
+        expect(stats).toHaveProperty("whiteBookExcluded");
+        expect(stats).toHaveProperty("blackBookExcluded");
+      },
+    );
 
     itDb("verifies linkGameEco safely records game ECO code", async () => {
       const fakeGameId = "00000000-0000-0000-0000-000000000001";
       await expect(linkGameEco(pool, fakeGameId, "B20")).resolves.not.toThrow();
     });
 
-    itDb("evaluates fn_verify_day10_openings() to PASSED on PostgreSQL", async () => {
-      const res = await pool.query(
-        "SELECT fn_verify_day10_openings() AS diag;",
-      );
-      const diag = res.rows[0].diag;
+    itDb(
+      "evaluates fn_verify_day10_openings() to PASSED on PostgreSQL",
+      async () => {
+        const res = await pool.query(
+          "SELECT fn_verify_day10_openings() AS diag;",
+        );
+        const diag = res.rows[0].diag;
 
-      expect(diag.status).toBe("PASSED");
-      expect(diag.total_openings_count).toBeGreaterThanOrEqual(50);
-      expect(diag.sicilian_match.eco_code).toBe("B90");
-      expect(diag.italian_match.eco_code).toBe("C50");
-      expect(diag.e4_is_book).toBe(true);
-      expect(diag.fools_mate_is_book).toBe(false);
-      expect(diag.acpl_rule_preserved).toBe(true);
-    });
+        expect(diag.status).toBe("PASSED");
+        expect(diag.total_openings_count).toBeGreaterThanOrEqual(50);
+        expect(diag.sicilian_match.eco_code).toBe("B90");
+        expect(diag.italian_match.eco_code).toBe("C50");
+        expect(diag.e4_is_book).toBe(true);
+        expect(diag.fools_mate_is_book).toBe(false);
+        expect(diag.acpl_rule_preserved).toBe(true);
+      },
+    );
   });
 });
