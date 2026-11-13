@@ -20,13 +20,9 @@ import {
   registerUser,
   logoutUser,
 } from "../api/auth";
+import { AUTH_STATUS } from "./authConstants";
 
-export const AUTH_STATUS = {
-  LOADING: "LOADING",
-  AUTHENTICATED: "AUTHENTICATED",
-  UNAUTHENTICATED: "UNAUTHENTICATED",
-  EXPIRED: "EXPIRED",
-};
+export { AUTH_STATUS };
 
 export const AuthContext = createContext(null);
 
