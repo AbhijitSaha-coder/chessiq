@@ -36,7 +36,7 @@ describe("Day 18: Production Cloud Deployment (Vercel Edge + Render + Neon Serve
       expect(Array.isArray(vercelCfg.rewrites)).toBe(true);
       expect(vercelCfg.rewrites[0]).toEqual({
         source: "/api/:path*",
-        destination: "https://chessiq-api.onrender.com/api/:path*",
+        destination: "https://chessiq-gsku.onrender.com/api/:path*",
       });
 
       const spaFallback = vercelCfg.rewrites.find(
