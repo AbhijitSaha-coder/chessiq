@@ -33,7 +33,7 @@ export const PUZZLE_SOLVE_STATE = {
 
 const PAGE_LIMIT = 20;
 
-export function useTrainingPuzzles({ enabled = true } = {}) {
+export function useTrainingPuzzles({ enabled = true, refreshKey = 0 } = {}) {
   const [rawPuzzles, setRawPuzzles] = useState([]);
   const [backendStats, setBackendStats] = useState(null);
   const [backendWeaknesses, setBackendWeaknesses] = useState(null);
@@ -254,9 +254,9 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
       }
       clearTimers();
     };
-    // Intentionally trigger when enabled or server-side filters change
+    // Intentionally trigger when enabled, refreshKey, or server-side filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, themeFilter, difficultyFilter]);
+  }, [enabled, refreshKey, themeFilter, difficultyFilter]);
 
   // Execute authoritative backend attempt submission with strict duplicate-click lock
   const submitAttemptWithLock = useCallback(async (puzzle, payload) => {
@@ -491,10 +491,17 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
   );
 
   const nextPuzzle = useCallback(() => {
+    // Prefer advancing to the next unsolved puzzle so completed ones never repeat
+    for (let i = activeIndex + 1; i < filteredPuzzles.length; i++) {
+      if (!filteredPuzzles[i]?.isCompleted) {
+        setActiveIndex(i);
+        return;
+      }
+    }
     if (activeIndex < filteredPuzzles.length - 1) {
       setActiveIndex((prev) => prev + 1);
     }
-  }, [activeIndex, filteredPuzzles.length]);
+  }, [activeIndex, filteredPuzzles]);
 
   const prevPuzzle = useCallback(() => {
     if (activeIndex > 0) {
@@ -510,7 +517,8 @@ export function useTrainingPuzzles({ enabled = true } = {}) {
       try {
         const generated = await generateFreshRecommendations(limit);
         setRawPuzzles(generated);
-        setActiveIndex(0);
+        const firstUnsolvedIdx = generated.findIndex((p) => !p.isCompleted);
+        setActiveIndex(firstUnsolvedIdx >= 0 ? firstUnsolvedIdx : 0);
       } catch (err) {
         setFetchError(
           err?.message ||

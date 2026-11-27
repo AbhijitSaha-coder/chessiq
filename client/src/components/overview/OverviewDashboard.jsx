@@ -79,6 +79,16 @@ export default function OverviewDashboard({
       if (g.white?.accuracy != null) {
         totalAcc += Number(g.white.accuracy);
         accCount++;
+      } else {
+        const userAcpl = userIsWhite ? g.white_acpl : g.black_acpl;
+        if (userAcpl != null) {
+          const derived = Math.max(
+            0,
+            Math.min(100, 100 - (Number(userAcpl) / 150) * 100),
+          );
+          totalAcc += derived;
+          accCount++;
+        }
       }
     });
 

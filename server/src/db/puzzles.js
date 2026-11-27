@@ -173,14 +173,20 @@ async function generateUserRecommendations(
 async function getUserRecommendations(dbPool = defaultPool, userId) {
   try {
     const res = await dbPool.query(
-      `SELECT r.id, r.user_id, r.puzzle_id, r.category, r.description,
-              r.metric_evidence, r.is_completed, r.created_at,
-              p.fen, p.moves, p.rating, p.themes
-       FROM v_training_recommendations r
-       LEFT JOIN v_training_puzzles p ON r.puzzle_id = p.id
-       WHERE r.user_id = $1
-       ORDER BY r.created_at DESC
-       LIMIT 20;`,
+      `SELECT *
+       FROM (
+         SELECT DISTINCT ON (r.puzzle_id)
+                r.id, r.user_id, r.puzzle_id, r.category, r.description,
+                r.metric_evidence, r.is_completed, r.created_at,
+                p.fen, p.moves, p.rating, p.themes
+         FROM v_training_recommendations r
+         LEFT JOIN v_training_puzzles p ON r.puzzle_id = p.id
+         WHERE r.user_id = $1
+           AND r.puzzle_id IS NOT NULL
+         ORDER BY r.puzzle_id, r.is_completed ASC, r.created_at DESC
+       ) deduped
+       ORDER BY deduped.is_completed ASC, deduped.created_at DESC
+       LIMIT 30;`,
       [userId],
     );
     return res.rows;

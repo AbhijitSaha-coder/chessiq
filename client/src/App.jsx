@@ -62,36 +62,49 @@ import {
 import api, { ApiError } from "./api/client";
 import { MASTER_GAMES, getAdvantageDetails } from "./data/gameReviews";
 
-function buildReviewedGameModel(g, moves = []) {
+function buildReviewedGameModel(g, moves = [], analysis = null) {
   const annotations = {};
   moves.forEach((m) => {
     annotations[m.ply_number] = {
       eval: m.eval_centipawns ? m.eval_centipawns / 100 : 0,
       mate: m.eval_mate,
-      class: m.mistake_type || "BEST",
-      cpl: m.cpl_capped,
-      comment: `Move ${m.move_san} (${m.mistake_type || "BEST"})`,
+      class: m.mistake_type || (m.is_book_move ? "BOOK" : "BEST"),
+      cpl: m.cpl_capped ?? 0,
+      gamePhase: m.game_phase || null,
+      isBookMove: Boolean(m.is_book_move),
+      comment: `Move ${m.move_san} (${m.mistake_type || (m.is_book_move ? "BOOK" : "BEST")})`,
       bestMove: m.best_move_uci,
     };
   });
 
+  const whiteAcpl = analysis?.white_acpl ?? g.white_acpl;
+  const blackAcpl = analysis?.black_acpl ?? g.black_acpl;
+  const calcAcc = (acpl, fallback) =>
+    acpl != null
+      ? Math.max(0, Math.min(100, Number((100 - (acpl / 150) * 100).toFixed(1))))
+      : fallback;
+
   return {
     id: g.id,
     title: `${g.white_player || "White"} vs ${g.black_player || "Black"}`,
-    event: "ChessIQ 6NF Analysis",
+    event: g.played_at
+      ? `Analyzed ${new Date(g.played_at).toLocaleDateString()}`
+      : "ChessIQ 6NF Analysis",
     white: {
       name: g.white_player || "White",
       rating: g.white_elo || 1800,
-      accuracy: 92.4,
+      accuracy: calcAcc(whiteAcpl, 92.4),
     },
     black: {
       name: g.black_player || "Black",
       rating: g.black_elo || 1800,
-      accuracy: 87.1,
+      accuracy: calcAcc(blackAcpl, 87.1),
     },
+    white_acpl: whiteAcpl ?? null,
+    black_acpl: blackAcpl ?? null,
     result: g.result || "*",
     eco: g.eco_code || "A00",
-    opening: "Analyzed Game",
+    opening: g.eco_code ? `ECO ${g.eco_code} • Analyzed Game` : "Analyzed Game",
     pgn: g.pgn_raw,
     annotations,
   };
@@ -124,6 +137,61 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
   // Day 12: Real-Time Analysis Polling Lifecycle Hook
   const [dbGames, setDbGames] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [analysisRefreshKey, setAnalysisRefreshKey] = useState(0);
+
+  const combinedGames = useMemo(() => {
+    const normalizedDb = (dbGames || []).map((g) => ({
+      ...g,
+      title: g.title || `${g.white_player || "White"} vs ${g.black_player || "Black"}`,
+      eco: g.eco || g.eco_code || "A00",
+      opening:
+        g.opening ||
+        (g.eco_code ? `ECO ${g.eco_code} • 6NF Analyzed` : "6NF Analyzed Match"),
+      event:
+        g.event ||
+        (g.created_at
+          ? `Uploaded ${new Date(g.created_at).toLocaleDateString()}`
+          : "ChessIQ 6NF"),
+    }));
+    const seen = new Set(normalizedDb.map((g) => g.id));
+    return [
+      ...normalizedDb,
+      ...MASTER_GAMES.filter((mg) => !seen.has(mg.id)),
+    ];
+  }, [dbGames]);
+
+  const handleSelectGame = useCallback(
+    async (game, { navigateToAnalysis = true } = {}) => {
+      if (game?.pgn) {
+        setSelectedGame(game);
+        setCurrentPlyIndex(0);
+        setIsPlaying(false);
+        if (navigateToAnalysis) setActiveTab("analysis");
+        return;
+      }
+      if (game?.id) {
+        try {
+          const gameRes = await api.get(`/api/games/${game.id}`, {
+            timeoutMs: 20000,
+          });
+          const data = gameRes?.data || gameRes;
+          if (data?.game) {
+            setSelectedGame(
+              buildReviewedGameModel(
+                data.game,
+                data.moves || [],
+                data.analysis || null,
+              ),
+            );
+            setCurrentPlyIndex(0);
+            setIsPlaying(false);
+          }
+        } catch (_) {}
+      }
+      if (navigateToAnalysis) setActiveTab("analysis");
+    },
+    [setActiveTab],
+  );
 
   const fetchOverviewData = useCallback(async () => {
     try {
@@ -153,12 +221,17 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
           const data = gameRes?.data || gameRes;
           if (data?.game) {
             setSelectedGame(
-              buildReviewedGameModel(data.game, data.moves || []),
+              buildReviewedGameModel(
+                data.game,
+                data.moves || [],
+                data.analysis || null,
+              ),
             );
             setCurrentPlyIndex(0);
           }
         }
         await fetchOverviewData();
+        setAnalysisRefreshKey((k) => k + 1);
       } catch (err) {
         console.error("Failed to load completed analysis game:", err);
       }
@@ -295,6 +368,11 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
           fenAfter: move.after,
           eval: annotation.eval ?? 0,
           mate: annotation.mate ?? null,
+          cpl: annotation.cpl ?? 0,
+          gamePhase: annotation.gamePhase || null,
+          isBookMove: Boolean(
+            annotation.isBookMove ?? annotation.class === "BOOK",
+          ),
           classification: annotation.class || "BEST",
           comment: annotation.comment || "",
           bestMove: annotation.bestMove || null,
@@ -517,32 +595,12 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
           {/* TAB 0: GRANDMASTER EDITORIAL OVERVIEW DOSSIER */}
           {activeTab === "overview" && (
             <OverviewDashboard
-              games={dbGames.length > 0 ? dbGames : MASTER_GAMES}
+              games={combinedGames}
               leaderboard={leaderboard}
               selectedGame={selectedGame}
-              onSelectGame={async (game) => {
-                if (game?.pgn) {
-                  setSelectedGame(game);
-                  setCurrentPlyIndex(0);
-                  setActiveTab("analysis");
-                  return;
-                }
-                if (game?.id) {
-                  try {
-                    const gameRes = await api.get(`/api/games/${game.id}`, {
-                      timeoutMs: 20000,
-                    });
-                    const data = gameRes?.data || gameRes;
-                    if (data?.game) {
-                      setSelectedGame(
-                        buildReviewedGameModel(data.game, data.moves || []),
-                      );
-                      setCurrentPlyIndex(0);
-                    }
-                  } catch (_) {}
-                }
-                setActiveTab("analysis");
-              }}
+              onSelectGame={(game) =>
+                handleSelectGame(game, { navigateToAnalysis: true })
+              }
               onNavigateToTab={setActiveTab}
             />
           )}
@@ -574,16 +632,14 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
                   borderBottom: "1px solid var(--border-subtle)",
                 }}
               >
-                {MASTER_GAMES.map((game) => {
+                {combinedGames.map((game) => {
                   const isSelected = selectedGame.id === game.id;
                   return (
                     <button
                       key={game.id}
-                      onClick={() => {
-                        setSelectedGame(game);
-                        setCurrentPlyIndex(0);
-                        setIsPlaying(false);
-                      }}
+                      onClick={() =>
+                        handleSelectGame(game, { navigateToAnalysis: false })
+                      }
                       style={{
                         padding: "8px 14px",
                         borderRadius: "6px",
@@ -1525,21 +1581,16 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
                       <button
                         onClick={handlePgnUpload}
-                        disabled={
-                          polling.status === POLLING_STATUS.PROCESSING ||
-                          polling.status === POLLING_STATUS.UPLOADING
-                        }
+                        disabled={polling.status === POLLING_STATUS.UPLOADING}
                         className="btn-primary"
                         style={{
                           padding: "6px 14px",
                           fontSize: "12px",
                           opacity:
-                            polling.status === POLLING_STATUS.PROCESSING ||
                             polling.status === POLLING_STATUS.UPLOADING
                               ? 0.6
                               : 1,
                           cursor:
-                            polling.status === POLLING_STATUS.PROCESSING ||
                             polling.status === POLLING_STATUS.UPLOADING
                               ? "not-allowed"
                               : "pointer",
@@ -1588,13 +1639,11 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
             >
               <LongitudinalRadarChart
                 gameMoves={gameMoves}
-                historicalGames={MASTER_GAMES}
+                historicalGames={combinedGames}
                 selectedGame={selectedGame}
-                onSelectGame={(g) => {
-                  setSelectedGame(g);
-                  setCurrentPlyIndex(0);
-                  setActiveTab("analysis");
-                }}
+                onSelectGame={(g) =>
+                  handleSelectGame(g, { navigateToAnalysis: true })
+                }
               />
             </ProtectedRoute>
           )}
@@ -1609,6 +1658,7 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
               <TrainingDashboard
                 isAuthenticated={isAuthenticated}
                 isSoundEnabled={isSoundEnabled}
+                refreshKey={analysisRefreshKey}
                 onToggleSound={() => setIsSoundEnabled((s) => !s)}
                 onNavigateToAnalysis={() => setActiveTab("analysis")}
               />

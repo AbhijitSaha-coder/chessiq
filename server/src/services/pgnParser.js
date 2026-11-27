@@ -83,11 +83,12 @@ function parsePgn(rawPgn) {
     throw new Error("PGN input is empty or not a string.");
   }
 
+  const cleanedPgn = rawPgn.replace(/^\uFEFF/, "").trim();
   const chess = new Chess();
 
   // Attempt to load PGN; chess.js throws on invalid PGN
   try {
-    chess.loadPgn(rawPgn.trim());
+    chess.loadPgn(cleanedPgn);
   } catch (err) {
     throw new Error(`Invalid PGN: ${err.message}`);
   }

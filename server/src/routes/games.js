@@ -135,6 +135,18 @@ router.post("/upload", async (req, res, next) => {
       );
       const gameId = gameResult.rows[0].id;
 
+      const allowedResults = new Set(["1-0", "0-1", "1/2-1/2", "*"]);
+      const rawResult = (headers.Result || "*").trim();
+      const safeResult = allowedResults.has(rawResult) ? rawResult : "*";
+
+      let safePlayedAt = new Date();
+      if (headers.Date && !headers.Date.includes("?")) {
+        const parsedDate = new Date(headers.Date.replace(/\./g, "-"));
+        if (!Number.isNaN(parsedDate.getTime())) {
+          safePlayedAt = parsedDate;
+        }
+      }
+
       // Step 3: Insert into 6NF game attribute tables
       const gameInserts = [
         // game_users (links game to authenticated user)
@@ -147,17 +159,17 @@ router.post("/upload", async (req, res, next) => {
         // game_white_players
         client.query(
           "INSERT INTO game_white_players (game_id, white_player) VALUES ($1, $2);",
-          [gameId, headers.White || "Unknown"],
+          [gameId, (headers.White || "Unknown").slice(0, 100)],
         ),
         // game_black_players
         client.query(
           "INSERT INTO game_black_players (game_id, black_player) VALUES ($1, $2);",
-          [gameId, headers.Black || "Unknown"],
+          [gameId, (headers.Black || "Unknown").slice(0, 100)],
         ),
         // game_results
         client.query(
           "INSERT INTO game_results (game_id, result) VALUES ($1, $2);",
-          [gameId, headers.Result || "*"],
+          [gameId, safeResult],
         ),
         // game_user_colors
         client.query(
@@ -177,12 +189,7 @@ router.post("/upload", async (req, res, next) => {
         // game_played_at
         client.query(
           "INSERT INTO game_played_at (game_id, played_at) VALUES ($1, $2);",
-          [
-            gameId,
-            headers.Date
-              ? new Date(headers.Date.replace(/\./g, "-"))
-              : new Date(),
-          ],
+          [gameId, safePlayedAt],
         ),
         // game_created_at
         client.query(

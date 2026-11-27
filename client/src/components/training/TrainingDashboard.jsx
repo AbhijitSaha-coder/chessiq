@@ -31,6 +31,7 @@ import PuzzleCard from "./PuzzleCard";
 export default function TrainingDashboard({
   isAuthenticated = false,
   isSoundEnabled = true,
+  refreshKey = 0,
   onToggleSound,
   onNavigateToAnalysis,
 }) {
@@ -73,7 +74,7 @@ export default function TrainingDashboard({
     requestHint,
     resetCurrentPuzzle,
     retrySubmission,
-  } = useTrainingPuzzles({ enabled: isAuthenticated });
+  } = useTrainingPuzzles({ enabled: isAuthenticated, refreshKey });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
