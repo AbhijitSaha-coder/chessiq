@@ -406,6 +406,56 @@ router.get("/analytics/phases", async (req, res, next) => {
 });
 
 /**
+ * GET /api/analytics/leaderboard
+ * Returns live player rankings aggregated from 6NF/3NF tables (v_users, v_games, v_game_analyses)
+ */
+router.get("/analytics/leaderboard", async (req, res, next) => {
+  try {
+    const lbRes = await query(`
+      SELECT
+        u.id,
+        u.username,
+        u.chess_rating,
+        COUNT(DISTINCT g.id)::INT AS games_analyzed,
+        COUNT(DISTINCT g.id) FILTER (
+          WHERE (g.result = '1-0' AND UPPER(g.user_color) = 'WHITE')
+             OR (g.result = '0-1' AND UPPER(g.user_color) = 'BLACK')
+        )::INT AS wins,
+        COUNT(DISTINCT g.id) FILTER (WHERE g.result = '1/2-1/2')::INT AS draws,
+        COUNT(DISTINCT g.id) FILTER (
+          WHERE (g.result = '0-1' AND UPPER(g.user_color) = 'WHITE')
+             OR (g.result = '1-0' AND UPPER(g.user_color) = 'BLACK')
+        )::INT AS losses,
+        COALESCE(
+          ROUND(AVG(
+            CASE
+              WHEN UPPER(g.user_color) = 'BLACK' THEN ga.black_acpl
+              ELSE ga.white_acpl
+            END
+          )::numeric, 1),
+          0
+        )::FLOAT AS avg_acpl
+      FROM v_users u
+      LEFT JOIN game_users gu ON gu.user_id = u.id
+      LEFT JOIN v_games g ON g.id = gu.game_id
+      LEFT JOIN v_game_analyses ga ON ga.game_id = g.id AND ga.is_completed = TRUE
+      GROUP BY u.id, u.username, u.chess_rating
+      ORDER BY u.chess_rating DESC, games_analyzed DESC, avg_acpl ASC
+      LIMIT 20;
+    `);
+
+    return res.json({
+      status: "success",
+      data: {
+        leaderboard: lbRes.rows,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/games
  * Day 14 (@FE/@BE): List paginated games for longitudinal performance tracking
  */

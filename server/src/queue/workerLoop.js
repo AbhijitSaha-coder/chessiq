@@ -15,6 +15,10 @@ const { claimNextJob, completeJob, failJob } = require("./jobClaim");
 const { HeartbeatWatchdog } = require("./heartbeat");
 const { createListenClient } = require("../db/pool");
 const { ingestGameAnalysis6NF } = require("../db/ingestion");
+const {
+  createPuzzleFromBlunder,
+  generateUserRecommendations,
+} = require("../db/puzzles");
 const { parsePgn } = require("../services/pgnParser");
 const { openingCatalog } = require("../services/openingCatalog");
 const {
@@ -274,6 +278,48 @@ async function processJob(pool, job, stockfishPool, options = {}) {
 
     // 6. Complete Analysis Job
     await completeJob(pool, jobId, claimToken);
+
+    // 7. Auto-extract training puzzles from blunders/mistakes & refresh recommendations
+    try {
+      const candidates = moveAnalyses
+        .filter(
+          (m) =>
+            m.plyNumber >= 2 &&
+            (m.mistakeType === "BLUNDER" || m.mistakeType === "MISTAKE"),
+        )
+        .sort((a, b) => (b.cplCapped || 0) - (a.cplCapped || 0))
+        .slice(0, 2);
+
+      for (const candidate of candidates) {
+        try {
+          await createPuzzleFromBlunder(
+            pool,
+            analysisId,
+            candidate.plyNumber,
+            "hangingPiece",
+          );
+        } catch (extractErr) {
+          logger.debug(
+            { gameId, ply: candidate.plyNumber, err: extractErr.message },
+            "Skipped blunder puzzle extraction for ply",
+          );
+        }
+      }
+
+      const ownerRes = await pool.query(
+        `SELECT user_id FROM game_users WHERE game_id = $1 LIMIT 1;`,
+        [gameId],
+      );
+      const ownerId = ownerRes.rows[0]?.user_id;
+      if (ownerId) {
+        await generateUserRecommendations(pool, ownerId, 5);
+      }
+    } catch (puzzleErr) {
+      logger.warn(
+        { gameId, err: puzzleErr.message },
+        "Non-fatal error refreshing puzzles/recommendations after game analysis",
+      );
+    }
 
     return {
       jobId,

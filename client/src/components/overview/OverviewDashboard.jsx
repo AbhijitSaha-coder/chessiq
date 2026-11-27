@@ -26,6 +26,7 @@ import { useAuth } from "../../hooks/useAuth";
 
 export default function OverviewDashboard({
   games = [],
+  leaderboard = [],
   selectedGame = null,
   onSelectGame,
   onNavigateToTab,
@@ -551,6 +552,162 @@ export default function OverviewDashboard({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 4. Live Database Leaderboard */}
+      <div className="editorial-card" style={{ padding: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+            paddingBottom: "12px",
+            borderBottom: "1px solid var(--border-subtle)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Award size={16} color="var(--accent-gold)" />
+            <h2
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: "18px",
+                fontWeight: "600",
+              }}
+            >
+              Club Leaderboard
+            </h2>
+          </div>
+          <span
+            style={{
+              fontSize: "11px",
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-muted)",
+            }}
+          >
+            Live from 6NF Database
+          </span>
+        </div>
+
+        {leaderboard.length === 0 ? (
+          <div
+            style={{
+              fontSize: "13px",
+              color: "var(--text-secondary)",
+              padding: "12px 0",
+            }}
+          >
+            No ranked players recorded yet. Upload and analyze a game to appear
+            on the leaderboard.
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "13px",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    borderBottom: "1px solid var(--border-subtle)",
+                    color: "var(--text-muted)",
+                    fontSize: "11px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    textAlign: "left",
+                  }}
+                >
+                  <th style={{ padding: "8px 6px" }}>#</th>
+                  <th style={{ padding: "8px 6px" }}>Player</th>
+                  <th style={{ padding: "8px 6px" }}>Rating</th>
+                  <th style={{ padding: "8px 6px" }}>Games</th>
+                  <th style={{ padding: "8px 6px" }}>W / D / L</th>
+                  <th style={{ padding: "8px 6px" }}>Avg ACPL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.slice(0, 10).map((player, idx) => (
+                  <tr
+                    key={player.id || player.username || idx}
+                    style={{
+                      borderBottom:
+                        idx < Math.min(leaderboard.length, 10) - 1
+                          ? "1px solid var(--border-subtle)"
+                          : "none",
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontFamily: "var(--font-mono)",
+                        color:
+                          idx === 0
+                            ? "var(--accent-gold)"
+                            : "var(--text-secondary)",
+                        fontWeight: idx === 0 ? "700" : "500",
+                      }}
+                    >
+                      {idx + 1}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontWeight: "600",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {player.username}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--accent-gold)",
+                      }}
+                    >
+                      {player.chess_rating}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      {player.games_analyzed ?? 0}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <span style={{ color: "var(--accent-sage)" }}>
+                        {player.wins ?? 0}W
+                      </span>{" "}
+                      / {player.draws ?? 0}D /{" "}
+                      <span style={{ color: "var(--accent-clay)" }}>
+                        {player.losses ?? 0}L
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 6px",
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {player.avg_acpl ?? 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

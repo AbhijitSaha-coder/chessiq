@@ -122,6 +122,29 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
   const [boardThemeKey, setBoardThemeKey] = useState("grandmaster");
 
   // Day 12: Real-Time Analysis Polling Lifecycle Hook
+  const [dbGames, setDbGames] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  const fetchOverviewData = useCallback(async () => {
+    try {
+      const [gamesRes, lbRes] = await Promise.allSettled([
+        api.get("/api/games", { timeoutMs: 15000 }),
+        api.get("/api/analytics/leaderboard", { timeoutMs: 15000 }),
+      ]);
+      if (gamesRes.status === "fulfilled") {
+        const list = gamesRes.value?.data?.games || gamesRes.value?.games || [];
+        if (Array.isArray(list)) setDbGames(list);
+      }
+      if (lbRes.status === "fulfilled") {
+        const lb =
+          lbRes.value?.data?.leaderboard || lbRes.value?.leaderboard || [];
+        if (Array.isArray(lb)) setLeaderboard(lb);
+      }
+    } catch (_) {
+      // Non-fatal background refresh
+    }
+  }, []);
+
   const polling = useAnalysisPolling({
     onComplete: async (jobData) => {
       try {
@@ -135,6 +158,7 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
             setCurrentPlyIndex(0);
           }
         }
+        await fetchOverviewData();
       } catch (err) {
         console.error("Failed to load completed analysis game:", err);
       }
@@ -152,14 +176,23 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
     try {
       polling.setUploading();
-      const res = await api.post(
-        "/api/games/upload",
-        {
-          pgn: customPgnInput,
-          account_handle: user?.username || undefined,
-        },
-        { timeoutMs: 60000 },
-      );
+      const lowerPgn = customPgnInput.toLowerCase();
+      const handleLower = (user?.username || "").trim().toLowerCase();
+      const headerMatchesUser =
+        handleLower.length > 0 &&
+        (lowerPgn.includes(`[white "${handleLower}"]`) ||
+          lowerPgn.includes(`[black "${handleLower}"]`));
+
+      const uploadPayload = headerMatchesUser
+        ? { pgn: customPgnInput, account_handle: user.username }
+        : {
+            pgn: customPgnInput,
+            user_color: boardOrientation === "black" ? "BLACK" : "WHITE",
+          };
+
+      const res = await api.post("/api/games/upload", uploadPayload, {
+        timeoutMs: 60000,
+      });
       const data = res?.data || res;
       if (data?.job_id) {
         polling.startPolling(data.job_id, data.game_id, data.total_plies);
@@ -236,7 +269,8 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
   useEffect(() => {
     fetchTelemetry();
-  }, [fetchTelemetry]);
+    fetchOverviewData();
+  }, [fetchTelemetry, fetchOverviewData]);
 
   // Parse moves from PGN using chess.js
   const gameMoves = useMemo(() => {
@@ -483,11 +517,30 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
           {/* TAB 0: GRANDMASTER EDITORIAL OVERVIEW DOSSIER */}
           {activeTab === "overview" && (
             <OverviewDashboard
-              games={MASTER_GAMES}
+              games={dbGames.length > 0 ? dbGames : MASTER_GAMES}
+              leaderboard={leaderboard}
               selectedGame={selectedGame}
-              onSelectGame={(game) => {
-                setSelectedGame(game);
-                setCurrentPlyIndex(0);
+              onSelectGame={async (game) => {
+                if (game?.pgn) {
+                  setSelectedGame(game);
+                  setCurrentPlyIndex(0);
+                  setActiveTab("analysis");
+                  return;
+                }
+                if (game?.id) {
+                  try {
+                    const gameRes = await api.get(`/api/games/${game.id}`, {
+                      timeoutMs: 20000,
+                    });
+                    const data = gameRes?.data || gameRes;
+                    if (data?.game) {
+                      setSelectedGame(
+                        buildReviewedGameModel(data.game, data.moves || []),
+                      );
+                      setCurrentPlyIndex(0);
+                    }
+                  } catch (_) {}
+                }
                 setActiveTab("analysis");
               }}
               onNavigateToTab={setActiveTab}
