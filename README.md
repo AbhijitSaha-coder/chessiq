@@ -11,6 +11,24 @@
 
 ---
 
+## 🌐 Live Deployment & Demo Testing
+
+- **Live Web App (Vercel Edge):** https://chessiq-six.vercel.app/
+- **Backend API & Health Telemetry (Render Docker + Stockfish):** https://chessiq-gsku.onrender.com/api/health
+- **Database:** Neon Serverless PostgreSQL 18 (6NF schema + GiST temporal constraints)
+
+### Testing Account
+| Field | Value |
+| :--- | :--- |
+| **Email** | `demo@chessiq.app` |
+| **Password** | `ChessIQDemo2026!` |
+| **Username** | `grandmaster_demo` |
+
+> [!NOTE]
+> The backend runs on Render's Free tier, so the first request after inactivity may take ~50 seconds to wake up.
+
+---
+
 ## ♟️ Executive Summary
 
 Digital chess platforms (Chess.com, Lichess) process hundreds of millions of games monthly, but their diagnostics are **ephemeral, session-isolated, and mathematically flawed** (e.g., synthetic zero-CPL overwrites on opening plies that hide catastrophic blunders like Fool's Mate).

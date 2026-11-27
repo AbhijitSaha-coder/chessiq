@@ -24,7 +24,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: FRONTEND_URL
-        value: https://app.chessiq.com
+        value: https://chessiq-six.vercel.app
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_URL_UNPOOLED
@@ -48,7 +48,7 @@ services:
       - key: MAX_CONCURRENT_JOBS
         value: "1"
       - key: OAUTH_CALLBACK_BASE_URL
-        value: https://app.chessiq.com
+        value: https://chessiq-six.vercel.app
       - key: OAUTH_GOOGLE_CLIENT_ID
         sync: false
       - key: OAUTH_GOOGLE_CLIENT_SECRET
@@ -71,7 +71,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://app.chessiq.com
+        value: https://chessiq-six.vercel.app
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_URL_UNPOOLED
