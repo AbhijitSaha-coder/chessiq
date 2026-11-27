@@ -59,7 +59,7 @@ import {
   History,
   Lock,
 } from "lucide-react";
-import api from "./api/client";
+import api, { ApiError } from "./api/client";
 import { MASTER_GAMES, getAdvantageDetails } from "./data/gameReviews";
 
 function buildReviewedGameModel(g, moves = []) {
@@ -152,16 +152,48 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
     try {
       polling.setUploading();
-      const res = await api.post("/api/games/upload", {
-        pgn: customPgnInput,
-        account_handle: user?.username || undefined,
-      });
+      const res = await api.post(
+        "/api/games/upload",
+        {
+          pgn: customPgnInput,
+          account_handle: user?.username || undefined,
+        },
+        { timeoutMs: 60000 },
+      );
       const data = res?.data || res;
       if (data?.job_id) {
         polling.startPolling(data.job_id, data.game_id, data.total_plies);
         setCustomPgnInput("");
+      } else {
+        polling.stopPolling();
       }
     } catch (err) {
+      polling.stopPolling();
+
+      // If this game already exists (409 Conflict), load its existing analysis directly
+      if (err instanceof ApiError && err.existing_game_id) {
+        try {
+          const existingRes = await api.get(
+            `/api/games/${err.existing_game_id}`,
+            { timeoutMs: 30000 },
+          );
+          const existingData = existingRes?.data || existingRes;
+          if (existingData?.game) {
+            setSelectedGame(
+              buildReviewedGameModel(
+                existingData.game,
+                existingData.moves || [],
+              ),
+            );
+            setCurrentPlyIndex(0);
+            setCustomPgnInput("");
+            return;
+          }
+        } catch (_) {
+          // Fall through to local PGN preview if loading existing game fails
+        }
+      }
+
       console.warn(
         "Backend upload failed, loading local preview:",
         err.message,

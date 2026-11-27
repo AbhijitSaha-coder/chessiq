@@ -88,13 +88,13 @@ export function useAnalysisPolling({
         try {
           res = await api.get(`/api/jobs/${activeId}`, {
             signal: abortControllerRef.current.signal,
-            timeoutMs: 6000,
+            timeoutMs: 12000,
           });
         } catch (fetchErr) {
           // If /api/jobs/ isn't direct, try fallback endpoint
           res = await api.get(`/api/games/jobs/${activeId}`, {
             signal: abortControllerRef.current.signal,
-            timeoutMs: 6000,
+            timeoutMs: 12000,
           });
         }
 
