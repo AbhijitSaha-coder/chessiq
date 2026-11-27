@@ -21,6 +21,7 @@ const {
   generateUserRecommendations,
   getUserRecommendations,
   getPuzzleThemes,
+  recordPuzzleAttempt,
 } = require("../db/puzzles");
 const { query } = require("../db/pool");
 const AppError = require("../utils/AppError");
@@ -154,6 +155,41 @@ router.get("/", async (req, res, next) => {
         count: puzzles.length,
         filters: { theme, minRating, maxRating, limit, offset },
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/puzzles/:id/attempt
+ * Validates a direct puzzle attempt against v_training_puzzles
+ */
+router.post("/:id/attempt", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      recommendation_id = null,
+      moves_played = [],
+      is_correct = false,
+      is_completed = false,
+      time_spent_ms = 0,
+      used_hint = false,
+    } = req.body || {};
+
+    const result = await recordPuzzleAttempt(undefined, {
+      recommendationId: recommendation_id,
+      puzzleId: id,
+      movesPlayed: moves_played,
+      isCorrect: is_correct,
+      isCompleted: is_completed,
+      timeSpentMs: time_spent_ms,
+      usedHint: used_hint,
+    });
+
+    return res.json({
+      status: "success",
+      data: result,
     });
   } catch (err) {
     next(err);

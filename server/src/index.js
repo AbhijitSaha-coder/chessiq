@@ -9,10 +9,17 @@ const app = require("./app");
 const env = require("./config/env");
 const logger = require("./utils/logger");
 const { closePool } = require("./db/pool");
+const { startWorkerRuntime } = require("./worker");
 
 const server = http.createServer(app);
 
 let isShuttingDown = false;
+let embeddedWorker = null;
+
+const shouldStartEmbeddedWorker =
+  process.env.ENABLE_EMBEDDED_WORKER === "true" ||
+  (env.NODE_ENV === "production" &&
+    process.env.ENABLE_EMBEDDED_WORKER !== "false");
 
 server.listen(env.PORT, env.HOST, () => {
   logger.info(
@@ -23,9 +30,23 @@ server.listen(env.PORT, env.HOST, () => {
       pid: process.pid,
       node_version: process.version,
       stockfish_path: env.STOCKFISH_PATH,
+      embedded_worker: shouldStartEmbeddedWorker,
     },
     `ChessIQ v3.3.0 Backend Gateway running on http://${env.HOST}:${env.PORT}`,
   );
+
+  if (shouldStartEmbeddedWorker) {
+    startWorkerRuntime()
+      .then((runtime) => {
+        embeddedWorker = runtime;
+      })
+      .catch((err) => {
+        logger.error(
+          { err: err.message },
+          "Failed to start embedded Stockfish worker runtime",
+        );
+      });
+  }
 });
 
 /**
@@ -64,7 +85,10 @@ async function handleShutdown(signal) {
     }
 
     try {
-      // 2. Drain and disconnect database connection pool
+      // 2. Stop embedded worker (if active) and drain database connection pool
+      if (embeddedWorker && typeof embeddedWorker.stopResources === "function") {
+        await embeddedWorker.stopResources();
+      }
       await closePool();
       logger.info("Graceful shutdown complete. Exiting cleanly.");
       clearTimeout(forceTimer);

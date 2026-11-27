@@ -229,6 +229,104 @@ async function verifyDay15Puzzles(dbPool = defaultPool) {
   }
 }
 
+/**
+ * Validates and records a training puzzle attempt, persisting completion state
+ * in recommendation_completion_states and attempt telemetry in recommendation_metrics.
+ *
+ * @param {import('pg').Pool | import('pg').PoolClient} [dbPool]
+ * @param {Object} payload
+ */
+async function recordPuzzleAttempt(dbPool = defaultPool, payload = {}) {
+  const {
+    recommendationId = null,
+    puzzleId = null,
+    movesPlayed = [],
+    isCorrect = false,
+    isCompleted = false,
+    timeSpentMs = 0,
+    usedHint = false,
+  } = payload;
+
+  let resolvedPuzzleId = puzzleId;
+
+  if (recommendationId && !resolvedPuzzleId) {
+    const recRes = await dbPool.query(
+      `SELECT puzzle_id FROM recommendation_puzzles WHERE recommendation_id = $1;`,
+      [recommendationId],
+    );
+    resolvedPuzzleId = recRes.rows[0]?.puzzle_id || null;
+  }
+
+  let expectedMoves = [];
+  if (resolvedPuzzleId) {
+    const puzzleRes = await dbPool.query(
+      `SELECT id, moves FROM v_training_puzzles WHERE id = $1;`,
+      [resolvedPuzzleId],
+    );
+    if (puzzleRes.rows[0]?.moves) {
+      expectedMoves = Array.isArray(puzzleRes.rows[0].moves)
+        ? puzzleRes.rows[0].moves
+        : [];
+    }
+  }
+
+  // Verify submitted moves match either full sequence or player-only replies (odd indices)
+  let movesMatch = true;
+  if (expectedMoves.length > 0 && Array.isArray(movesPlayed) && movesPlayed.length > 0) {
+    const matchesSequential = movesPlayed.every(
+      (mv, idx) => expectedMoves[idx] === mv,
+    );
+    const matchesPlayerReplies = movesPlayed.every(
+      (mv, idx) => expectedMoves[idx * 2 + 1] === mv,
+    );
+    movesMatch = matchesSequential || matchesPlayerReplies;
+  }
+
+  const verified = Boolean(isCorrect) && movesMatch;
+  const completed = verified && Boolean(isCompleted);
+
+  if (recommendationId) {
+    await dbPool.query(
+      `INSERT INTO recommendation_completion_states (recommendation_id, is_completed)
+       VALUES ($1, $2)
+       ON CONFLICT (recommendation_id)
+       DO UPDATE SET is_completed = recommendation_completion_states.is_completed OR EXCLUDED.is_completed;`,
+      [recommendationId, completed],
+    );
+
+    await dbPool.query(
+      `UPDATE recommendation_metrics
+       SET metric_evidence = COALESCE(metric_evidence, '{}'::jsonb) || jsonb_build_object(
+         'attempts_count', COALESCE((metric_evidence->>'attempts_count')::INT, 0) + 1,
+         'last_result', $2::TEXT,
+         'last_time_spent_ms', $3::INT,
+         'used_hint', $4::BOOLEAN,
+         'last_attempt_at', CURRENT_TIMESTAMP
+       )
+       WHERE recommendation_id = $1;`,
+      [
+        recommendationId,
+        verified ? "CORRECT" : "INCORRECT",
+        Math.max(0, Math.round(Number(timeSpentMs) || 0)),
+        Boolean(usedHint),
+      ],
+    );
+  }
+
+  return {
+    verified,
+    is_correct: verified,
+    is_completed: completed,
+    recommendation_id: recommendationId,
+    puzzle_id: resolvedPuzzleId,
+    message: completed
+      ? "Excellent! Solution verified and recorded to your training progression."
+      : verified
+        ? "Move verified."
+        : "Incorrect continuation. Try again.",
+  };
+}
+
 module.exports = {
   getPuzzleCatalog,
   getPuzzleById,
@@ -238,4 +336,5 @@ module.exports = {
   getUserRecommendations,
   getPuzzleThemes,
   verifyDay15Puzzles,
+  recordPuzzleAttempt,
 };

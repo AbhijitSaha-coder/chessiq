@@ -11,6 +11,7 @@ const express = require("express");
 const {
   getUserRecommendations,
   generateUserRecommendations,
+  recordPuzzleAttempt,
 } = require("../db/puzzles");
 const { query } = require("../db/pool");
 const logger = require("../utils/logger");
@@ -79,6 +80,41 @@ router.post("/generate", async (req, res, next) => {
         user_id: userId,
         recommendations,
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/recommendations/:id/attempt
+ * Validates and persists a puzzle attempt for a training recommendation
+ */
+router.post("/:id/attempt", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      puzzle_id = null,
+      moves_played = [],
+      is_correct = false,
+      is_completed = false,
+      time_spent_ms = 0,
+      used_hint = false,
+    } = req.body || {};
+
+    const result = await recordPuzzleAttempt(undefined, {
+      recommendationId: id,
+      puzzleId: puzzle_id,
+      movesPlayed: moves_played,
+      isCorrect: is_correct,
+      isCompleted: is_completed,
+      timeSpentMs: time_spent_ms,
+      usedHint: used_hint,
+    });
+
+    return res.json({
+      status: "success",
+      data: result,
     });
   } catch (err) {
     next(err);

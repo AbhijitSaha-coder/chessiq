@@ -43,6 +43,16 @@ async function startWorkerRuntime() {
     "ChessIQ v3.3.0 Stockfish Queue Worker started",
   );
 
+  async function stopResources() {
+    scheduler.stop();
+    if (workerHandle && typeof workerHandle.stop === "function") {
+      await workerHandle.stop();
+    }
+    if (typeof stockfishPool.shutdown === "function") {
+      await stockfishPool.shutdown();
+    }
+  }
+
   let shuttingDown = false;
   async function shutdown(signal) {
     if (shuttingDown) return;
@@ -61,13 +71,7 @@ async function startWorkerRuntime() {
     forceTimer.unref();
 
     try {
-      scheduler.stop();
-      if (workerHandle && typeof workerHandle.stop === "function") {
-        await workerHandle.stop();
-      }
-      if (typeof stockfishPool.shutdown === "function") {
-        await stockfishPool.shutdown();
-      }
+      await stopResources();
       await closePool();
       clearTimeout(forceTimer);
       logger.info("Worker runtime exited cleanly.");
@@ -79,7 +83,14 @@ async function startWorkerRuntime() {
     }
   }
 
-  return { workerId, stockfishPool, scheduler, workerHandle, shutdown };
+  return {
+    workerId,
+    stockfishPool,
+    scheduler,
+    workerHandle,
+    stopResources,
+    shutdown,
+  };
 }
 
 if (require.main === module) {
