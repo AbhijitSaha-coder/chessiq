@@ -1,0 +1,92 @@
+# ==============================================================================
+# ChessIQ v3.3.0 — Render Cloud Infrastructure-as-Code Blueprint
+# Provisions:
+#   1. chessiq-api    (Docker Web Service behind Render TLS -> Vercel Edge Proxy)
+#   2. chessiq-worker (Docker Background Worker running Stockfish NNUE Pool)
+# Database: Neon Serverless PostgreSQL 16/17 (DATABASE_URL with sslmode=require)
+# ==============================================================================
+
+services:
+  - type: web
+    name: chessiq-api
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: HOST
+        value: 0.0.0.0
+      - key: FRONTEND_URL
+        value: https://app.chessiq.com
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: STOCKFISH_PATH
+        value: /usr/games/stockfish
+      - key: STOCKFISH_THREADS
+        value: "1"
+      - key: STOCKFISH_HASH_MB
+        value: "64"
+      - key: STOCKFISH_DEPTH
+        value: "14"
+      - key: STOCKFISH_SEARCH_TIMEOUT_MS
+        value: "8000"
+      - key: STOCKFISH_KILL_GRACE_MS
+        value: "1500"
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
+      - key: OAUTH_CALLBACK_BASE_URL
+        value: https://app.chessiq.com
+      - key: OAUTH_GOOGLE_CLIENT_ID
+        sync: false
+      - key: OAUTH_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_GITHUB_CLIENT_ID
+        sync: false
+      - key: OAUTH_GITHUB_CLIENT_SECRET
+        sync: false
+
+  - type: worker
+    name: chessiq-worker
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    dockerCommand: node server/src/worker.js
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://app.chessiq.com
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+      - key: STOCKFISH_PATH
+        value: /usr/games/stockfish
+      - key: STOCKFISH_THREADS
+        value: "1"
+      - key: STOCKFISH_HASH_MB
+        value: "64"
+      - key: STOCKFISH_DEPTH
+        value: "14"
+      - key: STOCKFISH_SEARCH_TIMEOUT_MS
+        value: "8000"
+      - key: STOCKFISH_KILL_GRACE_MS
+        value: "1500"
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"

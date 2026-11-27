@@ -67,6 +67,8 @@ Enforces `app.chessiq.com` and `app.chessiq.com/api` via edge reverse proxy rewr
 chess_project/
 ├── .github/workflows/ci.yml       # GitHub Actions CI with PostgreSQL 16 service
 ├── docker-compose.yml             # Tuned PostgreSQL 16 Alpine container
+├── .dockerignore                  # Production Docker context exclusions
+├── render.yaml                    # Render IaC Blueprint (API Web Service + Stockfish Worker)
 ├── package.json                   # Root NPM Workspaces (server, client)
 ├── CHESS_IQ_SYSTEM_DESIGN.md      # Master System Architecture Specification
 │
@@ -78,27 +80,33 @@ chess_project/
 │       ├── 003_sp_ingest_game_analysis_6nf.sql # PL/pgSQL high-performance bulk ingestion
 │       ├── 004_stale_job_recovery_sweep.sql # Stale worker recovery sweep & claim invalidation
 │       ├── 005_seed_chess_openings_catalog.sql # 6NF opening catalog, prefix matching & ACPL exclusion
-│       └── 006_personalized_training_puzzles.sql # Curated puzzles, blunder extraction & personalized generator
+│       ├── 006_personalized_training_puzzles.sql # Curated puzzles, blunder extraction & personalized generator
+│       └── 007_oauth2_identities.sql    # 6NF OAuth 2.0 identities (Google & GitHub) & v_users LEFT JOIN
 │
 ├── server/                        # Backend API Gateway & Engine Worker
 │   ├── Dockerfile                 # Multi-stage container with Stockfish NNUE
 │   ├── src/
 │   │   ├── app.js                 # Express security gateway & /api/health
 │   │   ├── index.js               # HTTP entrypoint & graceful teardown
+│   │   ├── worker.js              # Render Background Worker & stale recovery runtime
 │   │   ├── config/env.js          # Zod runtime environment validator
+│   │   ├── middleware/
+│   │   │   └── authenticate.js    # Signed HttpOnly cookie JWT verification
 │   │   ├── db/
-│   │   │   ├── pool.js            # pg.Pool singleton & LISTEN client
+│   │   │   ├── pool.js            # pg.Pool singleton (Neon TLS) & LISTEN client
 │   │   │   ├── migrate.js         # SHA-256 verified migration engine
 │   │   │   ├── openings.js        # Opening catalog matching & ACPL calculation service
 │   │   │   └── puzzles.js         # Personalized puzzle generator & recommendations service
 │   │   ├── routes/
+│   │   │   ├── auth.js            # /api/auth/* & OAuth 2.0 PKCE endpoints
 │   │   │   ├── games.js           # Transactional PGN upload, jobs & longitudinal analytics
 │   │   │   ├── openings.js        # Opening book catalog REST API & prefix matcher
 │   │   │   ├── puzzles.js         # 3NF puzzle catalog, themes, & blunder puzzle extraction
 │   │   │   └── recommendations.js # Personalized training recommendations API (§8.1)
 │   │   ├── services/
 │   │   │   ├── pgnParser.js       # PGN parsing, FEN tracking & canonical hashing
-│   │   │   └── openingCatalog.js  # Authoritative in-memory Trie opening book catalog
+│   │   │   ├── openingCatalog.js  # Authoritative in-memory Trie opening book catalog
+│   │   │   └── oauth2.js          # OAuth 2.0 Authorization Code + PKCE S256 service
 │   │   ├── engine/
 │   │   │   ├── uciProtocol.js     # UCI protocol text parser & command builders
 │   │   │   ├── stockfishWorker.js # Stockfish child process manager & memory isolation
@@ -124,7 +132,10 @@ chess_project/
 │       ├── day11-chessboard.test.js # Interactive Chessboard UI & dynamic board flipping suite
 │       ├── day12-14-frontend-analytics.test.js # Real-time polling, blunder tiers & radar analytics suite
 │       ├── day15-puzzles.test.js  # Personalized puzzle generator & recommendations test suite
-│       └── day17-chaos-stress.test.js # End-to-end concurrency & fault-injection chaos suite
+│       ├── day16-auth.test.js     # Day 16 HttpOnly cookie session & JWT middleware suite
+│       ├── day16-oauth2.test.js   # OAuth 2.0 Authorization Code + PKCE test suite
+│       ├── day17-chaos-stress.test.js # End-to-end concurrency & fault-injection chaos suite
+│       └── day18-deployment.test.js # Vercel Edge, Render, Neon SSL & §15 acceptance suite
 │
 ├── client/                        # Frontend Single-Domain Client
 │   ├── index.html                 # HTML5 Shell
@@ -171,7 +182,8 @@ chess_project/
     ├── verify-day12-14.sh         # Automated Day 12-14 Telemetry, Blunder Tiers & Radar Seal Script
     ├── verify-day15.sh            # Automated Day 15 Personalized Training Puzzle Generator Seal Script (@DB)
     ├── verify-day15-16.sh         # Automated Day 15-16 Personalized Training & Auth Seal Script (@FE)
-    └── verify-day17.sh            # Automated Day 17 End-to-End Concurrency & Chaos Verification Seal Script
+    ├── verify-day17.sh            # Automated Day 17 End-to-End Concurrency & Chaos Verification Seal Script
+    └── verify-day18.sh            # Automated Day 18 Production Cloud Deployment & Final Seal Script
 ```
 
 ---
@@ -255,6 +267,9 @@ npm run verify:day15-16
 
 # Day 17 End-to-End Concurrency & Fault-Injection Stress Testing (Chaos Verification)
 npm run verify:day17
+
+# Day 18 Production Cloud Deployment (Vercel Edge + Render + Neon Serverless) & Final Seal
+npm run verify:day18
 ```
 
 ### 5. Launch Full Stack (Server + Client)
@@ -287,7 +302,7 @@ npm run dev
 - [x] **Day 15: Personalized Training Puzzle Generator (`v_training_puzzles`) (`@DB` / `@FE`)**
 - [x] **Day 16: Single-Domain Authentication & First-Party Cookie Integration (`@BE` / `@FE`)**
 - [x] **Day 17: End-to-End Concurrency & Fault-Injection Stress Testing (Chaos Verification)**
-- [ ] **Day 18:** Production Cloud Deployment (Vercel Edge + Render + Neon Serverless) & Final Seal
+- [x] **Day 18: Production Cloud Deployment (Vercel Edge + Render + Neon Serverless) & Final Seal**
 
 ---
 

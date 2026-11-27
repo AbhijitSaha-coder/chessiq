@@ -1,0 +1,9 @@
+# ChessIQ v3.3.0 — Docker Build Context Exclusions
+.git
+.gitignore
+**/node_modules
+client/dist
+server/coverage
+server/.env
+.DS_Store
+*.log

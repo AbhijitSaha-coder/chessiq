@@ -18,8 +18,8 @@ const poolConfig = {
   connectionString: env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  statement_timeout: 10000,
+  connectionTimeoutMillis: 10000,
+  statement_timeout: 15000,
   ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 };
 

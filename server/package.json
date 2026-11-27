@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:worker": "node src/worker.js",
     "dev": "nodemon --watch src src/index.js",
     "migrate": "node src/db/migrate.js",
     "test": "jest --detectOpenHandles --forceExit",

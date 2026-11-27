@@ -19,6 +19,10 @@ const { pool, query } = require("./db/pool");
 
 const app = express();
 
+// Trust first reverse-proxy hop (Render / Vercel Edge) so req.ip and X-Forwarded-Proto
+// work accurately with express-rate-limit and OAuth2 redirect URI construction.
+app.set("trust proxy", 1);
+
 // 1. Correlation ID & Request Context Middleware
 app.use((req, res, next) => {
   const requestId = req.headers["x-request-id"] || crypto.randomUUID();
