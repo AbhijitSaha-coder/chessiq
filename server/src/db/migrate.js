@@ -7,7 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { pool, closePool } = require("./pool");
+const { createDirectPool } = require("./pool");
 const logger = require("../utils/logger");
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../../../db/migrations");
@@ -22,10 +22,12 @@ function computeChecksum(content) {
 }
 
 /**
- * Run migrations sequentially
+ * Run migrations sequentially using a direct (unpooled) Postgres connection
  */
 async function runMigrations() {
+  const pool = createDirectPool();
   const startTime = Date.now();
+  try {
   logger.info(
     { dir: MIGRATIONS_DIR },
     "Starting ChessIQ database migration run...",
@@ -210,19 +212,18 @@ async function runMigrations() {
     },
     "Database migrations completed successfully",
   );
+  } finally {
+    await pool.end();
+  }
 }
 
 if (require.main === module) {
   runMigrations()
-    .then(async () => {
-      await closePool();
+    .then(() => {
       process.exit(0);
     })
-    .catch(async (err) => {
+    .catch((err) => {
       console.error("Migration failed:", err);
-      try {
-        await closePool();
-      } catch (_) {}
       process.exit(1);
     });
 }

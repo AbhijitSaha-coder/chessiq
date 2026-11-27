@@ -8,6 +8,14 @@ const { Pool, Client } = require("pg");
 const env = require("../config/env");
 const logger = require("../utils/logger");
 
+function needsSsl(connectionString) {
+  return (
+    connectionString.includes("sslmode=require") ||
+    connectionString.includes("ssl=true") ||
+    (env.NODE_ENV === "production" && !connectionString.includes("localhost"))
+  );
+}
+
 // Detect SSL requirement from DATABASE_URL or NODE_ENV
 const requiresSsl =
   env.DATABASE_URL.includes("sslmode=require") ||
@@ -22,6 +30,22 @@ const poolConfig = {
   statement_timeout: 15000,
   ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 };
+
+/**
+ * Create a direct (unpooled) Pool for schema migrations and DDL operations.
+ * Falls back to DATABASE_URL when DATABASE_URL_UNPOOLED is not set.
+ */
+function createDirectPool() {
+  const directUrl = env.DATABASE_URL_UNPOOLED || env.DATABASE_URL;
+  return new Pool({
+    connectionString: directUrl,
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 30000,
+    ssl: needsSsl(directUrl) ? { rejectUnauthorized: false } : false,
+  });
+}
 
 const pool = new Pool(poolConfig);
 
@@ -130,9 +154,10 @@ async function createListenClient(
   async function connectWithBackoff() {
     while (!isClosed) {
       try {
+        const listenUrl = env.DATABASE_URL_UNPOOLED || env.DATABASE_URL;
         client = new Client({
-          connectionString: env.DATABASE_URL,
-          ssl: requiresSsl ? { rejectUnauthorized: false } : false,
+          connectionString: listenUrl,
+          ssl: needsSsl(listenUrl) ? { rejectUnauthorized: false } : false,
           statement_timeout: 0, // Infinite timeout for long-lived listener
         });
 
@@ -230,5 +255,6 @@ module.exports = {
   query,
   withTransaction,
   createListenClient,
+  createDirectPool,
   closePool,
 };

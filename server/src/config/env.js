@@ -8,7 +8,8 @@ const path = require("path");
 const dotenv = require("dotenv");
 const { z } = require("zod");
 
-// Explicitly resolve and load server/.env
+// Explicitly resolve and load root .env.local (Neon CLI) then server/.env
+dotenv.config({ path: path.resolve(__dirname, "../../../.env.local") });
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const envSchema = z.object({
@@ -46,6 +47,17 @@ const envSchema = z.object({
           "DATABASE_URL must be a valid postgres:// or postgresql:// connection URI",
       },
     ),
+
+  DATABASE_URL_UNPOOLED: z
+    .string()
+    .refine(
+      (val) => val.startsWith("postgres://") || val.startsWith("postgresql://"),
+      {
+        message:
+          "DATABASE_URL_UNPOOLED must be a valid postgres:// or postgresql:// connection URI",
+      },
+    )
+    .optional(),
 
   JWT_SECRET: z.string().min(64, {
     message:

@@ -27,6 +27,8 @@ services:
         value: https://app.chessiq.com
       - key: DATABASE_URL
         sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: COOKIE_SECRET
@@ -71,6 +73,8 @@ services:
       - key: FRONTEND_URL
         value: https://app.chessiq.com
       - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
         sync: false
       - key: JWT_SECRET
         sync: false
