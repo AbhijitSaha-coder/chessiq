@@ -89,6 +89,7 @@ chess_project/
 ├── render.yaml                    # Render IaC Blueprint (API Web Service + Stockfish Worker)
 ├── package.json                   # Root NPM Workspaces (server, client)
 ├── CHESS_IQ_SYSTEM_DESIGN.md      # Master System Architecture Specification
+├── DB_ER_DIAGRAM.md               # Complete 6NF Entity-Relationship Diagrams (Mermaid)
 │
 ├── db/
 │   └── migrations/
@@ -99,7 +100,8 @@ chess_project/
 │       ├── 004_stale_job_recovery_sweep.sql # Stale worker recovery sweep & claim invalidation
 │       ├── 005_seed_chess_openings_catalog.sql # 6NF opening catalog, prefix matching & ACPL exclusion
 │       ├── 006_personalized_training_puzzles.sql # Curated puzzles, blunder extraction & personalized generator
-│       └── 007_oauth2_identities.sql    # 6NF OAuth 2.0 identities (Google & GitHub) & v_users LEFT JOIN
+│       ├── 007_oauth2_identities.sql    # 6NF OAuth 2.0 identities (Google & GitHub) & v_users LEFT JOIN
+│       └── 008_non_repeating_puzzles.sql # Non-repeating personalized puzzle & recommendation generator
 │
 ├── server/                        # Backend API Gateway & Engine Worker
 │   ├── Dockerfile                 # Multi-stage container with Stockfish NNUE
