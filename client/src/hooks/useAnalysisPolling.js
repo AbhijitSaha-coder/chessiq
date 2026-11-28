@@ -62,8 +62,8 @@ export function useAnalysisPolling({
   const statusRef = useRef(status);
   statusRef.current = status;
 
-  // Cleanup active timer and network requests
-  const stopPolling = useCallback(() => {
+  // Cleanup active timer and network requests without changing displayed status
+  const clearPollingTimers = useCallback(() => {
     isPollingRef.current = false;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -74,6 +74,13 @@ export function useAnalysisPolling({
       abortControllerRef.current = null;
     }
   }, []);
+
+  // Public stop/dismiss: aborts active polling and resets HUD/button back to IDLE
+  const stopPolling = useCallback(() => {
+    clearPollingTimers();
+    setStatus(POLLING_STATUS.IDLE);
+    setError(null);
+  }, [clearPollingTimers]);
 
   // Poll step
   const executePollStep = useCallback(
@@ -115,7 +122,7 @@ export function useAnalysisPolling({
         retryCountRef.current = 0; // Reset network retry count on success
 
         if (remoteStatus === "completed") {
-          stopPolling();
+          clearPollingTimers();
           setStatus(POLLING_STATUS.COMPLETED);
           setProgressPercent(100);
           setCompletedAnalysis(data.analysis || data);
@@ -124,7 +131,7 @@ export function useAnalysisPolling({
         }
 
         if (remoteStatus === "failed") {
-          stopPolling();
+          clearPollingTimers();
           setStatus(POLLING_STATUS.FAILED);
           const failErr = new Error(
             data.last_error || "Analysis job failed on worker node",
@@ -156,7 +163,7 @@ export function useAnalysisPolling({
             executePollStep(activeId);
           }, backoffDelay);
         } else {
-          stopPolling();
+          clearPollingTimers();
           setStatus(POLLING_STATUS.FAILED);
           const fatalErr = `Connection failed after ${retryCountRef.current} retries: ${err.message}`;
           setError(fatalErr);
@@ -164,13 +171,13 @@ export function useAnalysisPolling({
         }
       }
     },
-    [fastIntervalMs, slowIntervalMs, stopPolling, onComplete, onError],
+    [fastIntervalMs, slowIntervalMs, clearPollingTimers, onComplete, onError],
   );
 
   // Public start method: kicks off polling for a newly enqueued jobId
   const startPolling = useCallback(
     (newJobId, newGameId = null, totalEstimate = 0) => {
-      stopPolling();
+      clearPollingTimers();
       setJobId(newJobId);
       if (newGameId) setGameId(newGameId);
       if (totalEstimate > 0) setTotalPlies(totalEstimate);
@@ -185,7 +192,7 @@ export function useAnalysisPolling({
 
       executePollStep(newJobId);
     },
-    [stopPolling, executePollStep],
+    [clearPollingTimers, executePollStep],
   );
 
   // Manual retry method
@@ -200,8 +207,8 @@ export function useAnalysisPolling({
     if (initialJobId && enabled) {
       startPolling(initialJobId, initialGameId);
     }
-    return () => stopPolling();
-  }, [initialJobId, initialGameId, enabled, startPolling, stopPolling]);
+    return () => clearPollingTimers();
+  }, [initialJobId, initialGameId, enabled, startPolling, clearPollingTimers]);
 
   return {
     jobId,

@@ -68,7 +68,7 @@ export default function UserGameHistory({
       const res = await api.get(`/api/games/${encodeURIComponent(gameId)}`);
       const data = res?.data || res;
       if (data?.game && onLoadAnalyzedGame) {
-        onLoadAnalyzedGame(data.game, data.moves || []);
+        onLoadAnalyzedGame(data.game, data.moves || [], data.analysis || null);
       }
     } catch (err) {
       setError(err?.message || "Unable to load selected game review.");

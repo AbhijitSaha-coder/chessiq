@@ -11,7 +11,7 @@
  *    chess analytics, longitudinal progress, and tactical training puzzles are front and center.
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Chess } from "chess.js";
 import InteractiveChessboard from "./components/InteractiveChessboard";
 import AnalysisProgressBar from "./components/AnalysisProgressBar";
@@ -138,6 +138,7 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
   const [dbGames, setDbGames] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [analysisRefreshKey, setAnalysisRefreshKey] = useState(0);
+  const hasAutoSelectedDbGameRef = useRef(false);
 
   const combinedGames = useMemo(() => {
     const normalizedDb = (dbGames || []).map((g) => ({
@@ -162,6 +163,7 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
 
   const handleSelectGame = useCallback(
     async (game, { navigateToAnalysis = true } = {}) => {
+      hasAutoSelectedDbGameRef.current = true;
       if (game?.pgn) {
         setSelectedGame(game);
         setCurrentPlyIndex(0);
@@ -201,7 +203,31 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
       ]);
       if (gamesRes.status === "fulfilled") {
         const list = gamesRes.value?.data?.games || gamesRes.value?.games || [];
-        if (Array.isArray(list)) setDbGames(list);
+        if (Array.isArray(list)) {
+          setDbGames(list);
+          if (!hasAutoSelectedDbGameRef.current) {
+            const latestAnalyzed = list.find((g) => g.analysis_completed);
+            if (latestAnalyzed?.id) {
+              hasAutoSelectedDbGameRef.current = true;
+              try {
+                const detailRes = await api.get(
+                  `/api/games/${latestAnalyzed.id}`,
+                  { timeoutMs: 20000 },
+                );
+                const detailData = detailRes?.data || detailRes;
+                if (detailData?.game) {
+                  setSelectedGame(
+                    buildReviewedGameModel(
+                      detailData.game,
+                      detailData.moves || [],
+                      detailData.analysis || null,
+                    ),
+                  );
+                }
+              } catch (_) {}
+            }
+          }
+        }
       }
       if (lbRes.status === "fulfilled") {
         const lb =
@@ -1620,8 +1646,11 @@ function ChessIQDashboard({ activeTab, setActiveTab }) {
             >
               <UserGameHistory
                 isAuthenticated={isAuthenticated}
-                onLoadAnalyzedGame={(g, moves) => {
-                  setSelectedGame(buildReviewedGameModel(g, moves));
+                onLoadAnalyzedGame={(g, moves, analysis) => {
+                  hasAutoSelectedDbGameRef.current = true;
+                  setSelectedGame(
+                    buildReviewedGameModel(g, moves, analysis || null),
+                  );
                   setCurrentPlyIndex(0);
                   setActiveTab("analysis");
                 }}
